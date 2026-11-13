@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Placeholder card art. Body is white, accent is a neutral grey; the app tints both. Real art comes in phase 4. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="64dp"
+    android:viewportWidth="96"
+    android:viewportHeight="64">
+    <path android:fillColor="#FFFFFF" android:pathData="M22,12H74V52H22Z" />
+    <path android:fillColor="#808080" android:pathData="M28,18H68V26H28Z" />
+    <path android:fillColor="#404040" android:pathData="M40,32A8,8 0 1 0 56,32A8,8 0 1 0 40,32Z" />
+</vector>
