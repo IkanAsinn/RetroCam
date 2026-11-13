@@ -64,8 +64,13 @@ class Lut(val size: Int, val rgb: ByteArray /* size^3 * 3, index ((b*size + g)*s
 // Preview path: a CameraX CameraEffect (target PREVIEW) wrapping a GL SurfaceProcessor.
 class FilmCameraEffect(errorListener: (Throwable) -> Unit) : androidx.camera.core.CameraEffect {
     fun update(params: FilmParams, lut: Lut)   // thread-safe, may be called every frame
+    // Brightest region of the (unfiltered) preview, sampled every ~10 frames from a small
+    // downscaled read-back. Drives FlareMode.AUTO and the flare centre. null = nothing bright.
+    val highlight: kotlinx.coroutines.flow.StateFlow<Highlight?>
     fun release()
 }
+data class Highlight(val x: Float, val y: Float, val luma: Float)  // x, y in 0..1 UV of the upright frame
+// Preview grain animates (the effect adds its own frame counter to params.seed); captures use params.seed as-is.
 
 // Capture path: the SAME shader on an EGL pbuffer on its own GL thread. Tiles inputs
 // larger than GL_MAX_TEXTURE_SIZE. Output has the input's dimensions.
@@ -140,7 +145,11 @@ object ParamsMapper {
         flashActive: Boolean, seed: Int, brightHighlight: Boolean,
     ): FilmParams
 }
-@DrawableRes fun CardBody.drawableRes(): Int   // one vector drawable per body; app tints body/accent
+// Card art = three stacked vector drawables of one body shape (same 120x96 viewport):
+// body (white, app tints with card.bodyColor), accent (white, tinted with card.accentColor),
+// detail (fixed colours: lens, flash window, shading; drawn on top, never tinted).
+data class CardLayers(@DrawableRes val body: Int, @DrawableRes val accent: Int, @DrawableRes val detail: Int)
+fun CardBody.layers(): CardLayers
 ```
 
 `tools/lut/generate_luts.py` (numpy, optional colour-science) writes `.cube` and the
