@@ -135,14 +135,14 @@ LOOKS: Dict[str, Look] = {
         sat_bands={0: 1.1, 30: 1.05, 240: 0.95},
         shadow=("#1E4C6A", 0.18), highlight=("#FFD9A0", 0.12)),
     # ---------------- Instant ----------------
-    "instant_square": Look(  # faded, creamy highlights, warm-green cast
-        gains=(1.02, 1.035, 0.88), curve=C(k=1.1, lift=0.085, white=0.93), sat=0.78,
-        sat_bands={0: 0.85, 240: 0.75}, hue_shifts=[(70, 40, 8)],
-        shadow=("#5F9C78", 0.40), highlight=("#FFF0BE", 0.35)),
-    "instant_mini": Look(  # bright, high-key, cool
-        gains=(0.965, 1.0, 1.07), curve=C(k=1.7, gamma=0.86, lift=0.02, white=1.0), sat=1.08,
-        sat_bands={180: 1.3, 300: 1.2, 240: 1.1},
-        shadow=("#7F74D0", 0.22), highlight=("#DDEEFF", 0.20)),
+    "instant_square": Look(  # Instax Square: same film as the Mini, a touch softer in tone
+        gains=(0.995, 1.0, 1.012), curve=C(k=3.0, gamma=0.94, lift=0.006, white=1.0), sat=1.1,
+        sat_bands={0: 1.1, 120: 0.95, 180: 1.1, 240: 1.05, 300: 1.1}, hue_shifts=[(28, 20, -6)],
+        shadow=("#3A3A5A", 0.08), highlight=("#F4F8FF", 0.05)),
+    "instant_mini": Look(  # Instax Mini: vivid, high-key, punchy, dense shadows, highlights blow early
+        gains=(0.995, 1.0, 1.012), curve=C(k=3.4, gamma=0.92, lift=0.005, white=1.0), sat=1.14,
+        sat_bands={0: 1.1, 120: 0.95, 180: 1.15, 240: 1.05, 300: 1.1}, hue_shifts=[(28, 20, -6)],
+        shadow=("#3A3A5A", 0.08), highlight=("#F4F8FF", 0.05)),
     # ---------------- Black and white ----------------
     "grit_400": Look(  # high contrast, deep blacks, dramatic skies
         mono=(0.46, 0.42, 0.12), curve=C(k=6.2, gamma=1.14, white=1.0),
