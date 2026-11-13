@@ -13,6 +13,7 @@ import com.retrocam.filmengine.OffscreenFilmRenderer
 import com.retrocam.logic.FrameSelection
 import com.retrocam.logic.LensMapping
 import com.retrocam.logic.ReleasableHolder
+import com.retrocam.logic.StrengthMath
 import com.retrocam.logic.UiMath
 import com.retrocam.profiles.CameraProfile
 import com.retrocam.profiles.ParamsMapper
@@ -59,7 +60,7 @@ class CapturePipeline(
                 brightHighlight = shot.highlight != null,
                 highlightX = shot.highlight?.x,
                 highlightY = shot.highlight?.y,
-            )
+            ).copy(strength = StrengthMath.toStrength(shot.settings.strengthFor(shot.profile.id))) // same strength as the preview
             val rendered = renderer.use { it.render(frame.bitmap, params, lut) }
             toRecycle += rendered
             if (rendered !== frame.bitmap) frame.bitmap.recycle() // free the 48 MB input early

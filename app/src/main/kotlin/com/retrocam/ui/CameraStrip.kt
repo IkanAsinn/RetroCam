@@ -3,7 +3,12 @@ package com.retrocam.ui
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.interaction.DragInteraction
+import androidx.compose.foundation.lazy.LazyListLayoutInfo
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.gestures.snapping.SnapPosition
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
@@ -47,13 +52,21 @@ import com.retrocam.profiles.CameraProfile
 import com.retrocam.profiles.layers
 import com.retrocam.profiles.parseHexArgb
 import com.retrocam.ui.theme.RetroColors
-import kotlinx.coroutines.flow.drop
 import kotlin.math.abs
 
 private val CardWidth = 92.dp
 private val CardHeight = 88.dp
 
-/** Horizontal strip of camera cards; the selected one is centred and outlined in orange. */
+/**
+ * Horizontal strip of camera cards; the selected one is centred and outlined in orange.
+ *
+ * Selection rules (they exist to make a feedback loop impossible):
+ *  - [onSelect] is only ever called for a user-initiated scroll (a drag/fling that has settled) or a tap.
+ *  - Moving the strip because [selectedIndex] changed (tap, viewfinder swipe, restore) never calls [onSelect].
+ *  - "Centre" is measured in item-offset coordinates: LazyListItemInfo.offset is relative to the content start, so with
+ *    contentPadding the viewport centre is viewportStartOffset + viewportSize / 2, not viewportSize / 2.
+ * [selectedStrengthPercent] below 100 shows a small badge on the selected card; tapping the selected card calls [onSelectedTap].
+ */
 @Composable
 fun CameraStrip(
     profiles: List<CameraProfile>,
@@ -61,22 +74,28 @@ fun CameraStrip(
     onSelect: (Int) -> Unit,
     rotation: () -> Float,
     modifier: Modifier = Modifier,
+    selectedStrengthPercent: Int = 100,
+    onSelectedTap: () -> Unit = {},
 ) {
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = selectedIndex)
     val currentIndex = rememberUpdatedState(selectedIndex)
     val currentSelect = rememberUpdatedState(onSelect)
 
-    // Programmatic selection (tap or swipe on the viewfinder) -> centre that card.
-    LaunchedEffect(selectedIndex) { listState.animateScrollToItem(selectedIndex) }
+    // Programmatic selection (tap, viewfinder swipe) -> centre that card. Never reports back through onSelect.
+    LaunchedEffect(selectedIndex) { listState.centreItem(selectedIndex) }
 
-    // User fling settled -> the card nearest the centre becomes the selection.
+    // Remember that the user touched the list; only such a scroll may change the selection when it settles.
+    val userScrolled = remember { booleanArrayOf(false) }
     LaunchedEffect(listState) {
-        snapshotFlow { listState.isScrollInProgress }.drop(1).collect { scrolling ->
+        listState.interactionSource.interactions.collect { if (it is DragInteraction.Start) userScrolled[0] = true }
+    }
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.isScrollInProgress }.collect { scrolling ->
             if (scrolling) return@collect
-            val info = listState.layoutInfo
-            val centre = info.viewportSize.width / 2f
-            val nearest = info.visibleItemsInfo.minByOrNull { abs(it.offset + it.size / 2f - centre) }
-            if (nearest != null && nearest.index != currentIndex.value) currentSelect.value(nearest.index)
+            if (!userScrolled[0]) return@collect
+            userScrolled[0] = false
+            val nearest = listState.itemNearestCentre()
+            if (nearest != null && nearest != currentIndex.value) currentSelect.value(nearest)
         }
     }
 
@@ -91,17 +110,46 @@ fun CameraStrip(
             modifier = Modifier.fillMaxSize(),
         ) {
             itemsIndexed(profiles, key = { _, p -> p.id }) { index, profile ->
-                CameraCard(profile, index == selectedIndex, rotation) { onSelect(index) }
+                val selected = index == selectedIndex
+                CameraCard(
+                    profile, selected, rotation,
+                    strengthPercent = if (selected) selectedStrengthPercent else 100,
+                ) { if (selected) onSelectedTap() else onSelect(index) }
             }
         }
     }
 }
 
+/** Viewport centre in the same coordinates as [androidx.compose.foundation.lazy.LazyListItemInfo.offset]. */
+internal fun LazyListLayoutInfo.viewportCentre(): Float = viewportStartOffset + (viewportEndOffset - viewportStartOffset) / 2f
+
+internal fun LazyListState.itemNearestCentre(): Int? {
+    val info = layoutInfo
+    val centre = info.viewportCentre()
+    return info.visibleItemsInfo.minByOrNull { abs(it.offset + it.size / 2f - centre) }?.index
+}
+
+/** Scrolls so [index] sits exactly in the middle; animateScrollToItem lands on the content padding, then any residue is scrolled away. */
+internal suspend fun LazyListState.centreItem(index: Int) {
+    animateScrollToItem(index)
+    val info = layoutInfo
+    val item = info.visibleItemsInfo.firstOrNull { it.index == index } ?: return
+    val delta = item.offset + item.size / 2f - info.viewportCentre()
+    if (abs(delta) > 0.5f) animateScrollBy(delta)
+}
+
 @Composable
-private fun CameraCard(profile: CameraProfile, selected: Boolean, rotation: () -> Float, onClick: () -> Unit) {
+private fun CameraCard(
+    profile: CameraProfile,
+    selected: Boolean,
+    rotation: () -> Float,
+    strengthPercent: Int,
+    onClick: () -> Unit,
+) {
     val label = if (selected) stringResource(R.string.cd_camera_card_selected, profile.name)
     else stringResource(R.string.cd_camera_card, profile.name)
     val shape = RoundedCornerShape(14.dp)
+    Box(contentAlignment = Alignment.TopEnd) {
     Column(
         modifier = Modifier
             .width(CardWidth)
@@ -126,6 +174,22 @@ private fun CameraCard(profile: CameraProfile, selected: Boolean, rotation: () -
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 4.dp).uiRotate(rotation),
         )
+    }
+    if (selected && strengthPercent != 100) {
+        val badge = stringResource(R.string.strength_value, strengthPercent)
+        val badgeDescription = stringResource(R.string.cd_strength_badge, strengthPercent)
+        Text(
+            text = badge,
+            color = RetroColors.Charcoal,
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier
+                .padding(top = 4.dp, end = 4.dp)
+                .background(RetroColors.Orange, RoundedCornerShape(8.dp))
+                .padding(horizontal = 5.dp, vertical = 1.dp)
+                .semantics { contentDescription = badgeDescription }
+                .uiRotate(rotation),
+        )
+    }
     }
 }
 

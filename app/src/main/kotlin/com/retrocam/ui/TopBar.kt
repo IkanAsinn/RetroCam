@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -19,6 +21,7 @@ import androidx.compose.material.icons.outlined.Gradient
 import androidx.compose.material.icons.outlined.Grain
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -57,12 +60,19 @@ class TopBarActions(
     val onLeaks: () -> Unit,
     val onDate: () -> Unit,
     val onTimer: () -> Unit,
+    val onStrength: () -> Unit,
     val onSettings: () -> Unit,
 )
 
 /** Flash, grain, flare, light leak, date stamp, timer: each cycles on tap, long-press shows its label. */
 @Composable
-fun TopBar(state: CameraScreenState, rotation: () -> Float, actions: TopBarActions, modifier: Modifier = Modifier) {
+fun TopBar(
+    state: CameraScreenState,
+    rotation: () -> Float,
+    actions: TopBarActions,
+    modifier: Modifier = Modifier,
+    strengthOpen: Boolean = false,
+) {
     val s = state.settings
     val hasFlash = state.camera?.hasFlashUnit == true
     val off = stringResource(R.string.state_off)
@@ -174,6 +184,15 @@ fun TopBar(state: CameraScreenState, rotation: () -> Float, actions: TopBarActio
             rotation = rotation,
             onClick = actions.onTimer,
         )
+        val strength = s.strengthFor(s.cameraId)
+        TopToggle(
+            icon = Icons.Outlined.Tune,
+            description = stringResource(R.string.desc_strength, stringResource(R.string.strength_value, strength)),
+            badge = if (strength != 100) stringResource(R.string.strength_value, strength) else null,
+            active = strength != 100 || strengthOpen,
+            rotation = rotation,
+            onClick = actions.onStrength,
+        )
         TopToggle(
             icon = Icons.Outlined.Settings,
             description = stringResource(R.string.desc_settings),
@@ -187,7 +206,7 @@ fun TopBar(state: CameraScreenState, rotation: () -> Float, actions: TopBarActio
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TopToggle(
+private fun RowScope.TopToggle(
     icon: ImageVector,
     description: String,
     badge: String?,
@@ -198,13 +217,15 @@ private fun TopToggle(
 ) {
     val tint = if (active) RetroColors.Orange else RetroColors.Cream
     TooltipBox(
+        modifier = Modifier.weight(1f),
         positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
         tooltip = { PlainTooltip { Text(description) } },
         state = rememberTooltipState(),
     ) {
         Box(
             modifier = Modifier
-                .size(48.dp) // minimum touch target
+                .fillMaxWidth()
+                .height(48.dp) // touch target height; width is shared evenly (8 toggles fit a 360dp screen)
                 .clip(CircleShape)
                 .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
                 .semantics { contentDescription = description; role = Role.Button }

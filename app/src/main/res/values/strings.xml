@@ -18,6 +18,12 @@
     <string name="desc_date">Date stamp: %1$s</string>
     <string name="desc_timer">Self-timer: %1$s</string>
     <string name="desc_settings">Settings</string>
+    <string name="desc_strength">Film strength, %1$s</string>
+    <string name="strength_label">Strength</string>
+    <string name="strength_value">%1$d%%</string>
+    <string name="cd_strength_slider">Film strength</string>
+    <string name="cd_strength_reset">Reset strength to 100%%</string>
+    <string name="cd_strength_badge">Strength %1$d%%</string>
 
     <string name="state_off">off</string>
     <string name="state_on">on</string>
