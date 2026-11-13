@@ -78,6 +78,11 @@ class ParamsMapperTest {
         assertEquals(bare.vignette.strength, map(bare, lens = LensKind.ULTRA_WIDE).vignetteStrength, 1e-6f)
     }
 
+    @Test fun flashBackgroundDropIsPassedThrough() {
+        val spec = p("gold_snap").flash!!
+        assertEquals(spec.backgroundDrop.coerceIn(0f, 1f), map(p("gold_snap"), flash = true).flash!!.backgroundDrop, 0f)
+    }
+
     @Test fun flashOnlyWhenActiveAndSpecified() {
         assertNull(map(p("gold_snap"), flash = false).flash)
         val look = map(p("gold_snap"), flash = true).flash

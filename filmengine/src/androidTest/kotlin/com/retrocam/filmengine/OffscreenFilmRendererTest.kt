@@ -125,6 +125,20 @@ class OffscreenFilmRendererTest {
     }
 
     @Test
+    fun halfStrengthMatchesCpuReferenceAndZeroIsUntouched() = runBlocking {
+        val input = syntheticImage(800, 600)
+        val lut = testLut()
+        val half = goldenParams().copy(strength = 0.5f)
+        val outHalf = renderer.render(input, half, lut)
+        val deltaHalf = maxDelta(input, outHalf, half, lut)
+        assertTrue("strength 0.5: max channel delta $deltaHalf > 3/255", deltaHalf <= 3)
+        val zero = goldenParams().copy(strength = 0f)
+        val outZero = renderer.render(input, zero, lut)
+        val deltaZero = maxDelta(input, outZero, zero, lut)
+        assertTrue("strength 0: max channel delta $deltaZero > 3/255", deltaZero <= 3)
+    }
+
+    @Test
     fun tiledRenderIsSeamlessAndMatchesReference() = runBlocking {
         // 2300 x 1200: 3 x 2 tiles of 1024.
         val input = syntheticImage(2300, 1200)

@@ -92,6 +92,7 @@ object ParamsMapper {
             kelvin = spec.kelvin,
             strength = spec.strength.coerceIn(0f, 1f),
             gel = gel,
+            backgroundDrop = spec.backgroundDrop.coerceIn(0f, 1f),
         )
     }
 

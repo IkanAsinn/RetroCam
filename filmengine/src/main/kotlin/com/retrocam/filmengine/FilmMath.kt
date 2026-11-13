@@ -7,7 +7,7 @@ import kotlin.math.sqrt
 
 /**
  * Pure-Kotlin CPU reference of the COLOUR part of the shader (exposure, contrast, black lift,
- * LUT, saturation, colour shift, vignette). No grain, blur, CA, flash, halation, flare or leak.
+ * LUT, saturation, colour shift, vignette, filter strength). No grain, blur, CA, flash, halation, flare or leak.
  * Used by unit tests and by the golden-image instrumented test. Keep in lock-step with
  * [FilmShader].
  */
@@ -17,6 +17,10 @@ object FilmMath {
     const val LUMA_G = 0.7152f
     const val LUMA_B = 0.0722f
     internal const val HALATION_TAPS = 12
+    // Flash background falloff tuning (shared with the shader): luma below LO drops fully, above HI not at all.
+    const val BG_LUMA_LO = 0.15f
+    const val BG_LUMA_HI = 0.45f
+    const val BG_RADIAL_MIN = 0.6f
 
     private fun clamp01(x: Float) = min(1f, max(0f, x))
 
@@ -69,11 +73,30 @@ object FilmMath {
         return 1f - params.vignetteStrength * v
     }
 
+    /** Multiplier (1 = untouched) of the flash background falloff for an input pixel of [luma] at radius [r]. */
+    fun backgroundKeep(flash: FlashLook?, luma: Float, r: Float): Float {
+        val k = flash?.backgroundDrop?.let { clamp01(it) } ?: 0f
+        if (k <= 0f) return 1f
+        val drop = k * (1f - smoothstep(BG_LUMA_LO, BG_LUMA_HI, luma)) * (BG_RADIAL_MIN + (1f - BG_RADIAL_MIN) * clamp01(r))
+        return 1f - clamp01(drop)
+    }
+
+    /** Filter strength limited to 0..1 (NaN counts as full strength). */
+    fun clampStrength(strength: Float): Float = if (strength.isNaN()) 1f else clamp01(strength)
+
     /** Colour pipeline for one pixel at output position ([u], [v]) of an image with [aspect] = w/h. */
     fun apply(r: Float, g: Float, b: Float, params: FilmParams, lut: Lut, u: Float, v: Float, aspect: Float): Rgb {
-        val c = grade(r, g, b, params, lut)
-        val m = vignette(params, radius(u, v, aspect))
-        return Rgb(clamp01(c.r * m), clamp01(c.g * m), clamp01(c.b * m))
+        val rad = radius(u, v, aspect)
+        val keep = backgroundKeep(params.flash, luma(r, g, b), rad)
+        val c = grade(r * keep, g * keep, b * keep, params, lut)
+        val m = vignette(params, rad)
+        val fr = clamp01(c.r * m)
+        val fg = clamp01(c.g * m)
+        val fb = clamp01(c.b * m)
+        val k = clampStrength(params.strength)
+        if (k >= 1f) return Rgb(fr, fg, fb)
+        // mix(input, film, strength), exactly the shader's final step
+        return Rgb(r + (fr - r) * k, g + (fg - g) * k, b + (fb - b) * k)
     }
 
     /** Flash light colour relative to 6500 K (white), times the optional gel. */

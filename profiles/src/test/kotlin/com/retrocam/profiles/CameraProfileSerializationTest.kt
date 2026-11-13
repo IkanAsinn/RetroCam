@@ -20,4 +20,12 @@ class CameraProfileSerializationTest {
         val json = Json.encodeToString(profile)
         assertEquals(profile, Json.decodeFromString<CameraProfile>(json))
     }
+
+    @Test
+    fun flashBackgroundDropIsOptionalWithDefaultAndParsedWhenPresent() {
+        val absent = Json.decodeFromString<FlashSpec>("""{"hotspotSize":0.5,"falloff":0.5,"kelvin":5500,"strength":0.6}""")
+        assertEquals(0.6f, absent.backgroundDrop, 0f)
+        val present = Json.decodeFromString<FlashSpec>("""{"hotspotSize":0.5,"falloff":0.5,"kelvin":5500,"strength":0.6,"backgroundDrop":0.85}""")
+        assertEquals(0.85f, present.backgroundDrop, 0f)
+    }
 }

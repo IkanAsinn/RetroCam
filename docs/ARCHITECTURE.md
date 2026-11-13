@@ -42,10 +42,11 @@ data class FilmParams(
     val leak: LeakLook? = null,            // null = no light leak
     val colorShift: Rgb = Rgb(0f, 0f, 0f), // per-shot random cast, added after LUT (-0.1..0.1)
     val seed: Int = 0,                     // per-shot random seed: grain pattern, leak position, flare
+    val strength: Float = 1f,              // 0..1 filter strength = mix(unprocessed input, film result, strength); 1 = bit-identical full look
 ) { companion object { const val REFERENCE_SHORT_EDGE = 1080 } }
 
 data class Rgb(val r: Float, val g: Float, val b: Float)
-data class FlashLook(val hotspotSize: Float, val falloff: Float, val kelvin: Float, val strength: Float, val gel: Rgb? = null)
+data class FlashLook(val hotspotSize: Float, val falloff: Float, val kelvin: Float, val strength: Float, val gel: Rgb? = null, val backgroundDrop: Float = 0f)
 data class FlareLook(val style: FlareStyle, val strength: Float, val centerX: Float, val centerY: Float) // centre in 0..1 UV
 enum class FlareStyle { WARM, RAINBOW }
 data class LeakLook(val tint: Rgb, val strength: Float, val angle: Float, val offset: Float)
@@ -90,6 +91,16 @@ object DateStampRenderer {
 ```
 
 The GLSL source lives in one place (`FilmShader.kt`) and is used by both paths.
+
+Shader additions (mirrored in `FilmMath`, the CPU reference):
+- Flash background falloff (only when `flash != null`, `FlashLook.backgroundDrop` > 0): applied to the sampled colour BEFORE
+  exposure/LUT, `col *= 1 - backgroundDrop * (1 - smoothstep(0.15, 0.45, luma)) * mix(0.6, 1.0, r)`. Dark, far-from-centre
+  regions go toward black (the LUT / blackLift then tint the blacks); lit subjects (luma >= 0.45) are untouched.
+  `FlashSpec.backgroundDrop` is optional in profile JSON (Kotlin default 0.6).
+- Filter strength (`FilmParams.strength`): last step, `out = mix(plainInputSample, filmColour, uStrength)`; the plain sample has
+  no CA, edge blur, grain, vignette or flash drop. Frame borders and the date stamp are composed after the shader and ignore it.
+- App: per-profile strength is stored in DataStore as `Settings.strengthPercent: Map<profileId, Int>` (0..100, step 5, default
+  100, key `strength_pct` = `id:pct;id:pct`), applied to both the preview effect and the capture params.
 Grain and chromatic aberration scale by `outputShortEdge / REFERENCE_SHORT_EDGE`
 so the 12 MP file looks like the preview. Grain is luminance-dependent (stronger in
 shadows) and reseeded from `seed`.
@@ -125,7 +136,7 @@ enum class FlareStyleSpec { NONE, WARM, RAINBOW, RANDOM }
     val card: CardSpec,
 )
 // GrainSpec(amount, size), VignetteSpec(strength, softness), HalationSpec(strength, tint "#RRGGBB"),
-// FlashSpec(hotspotSize, falloff, kelvin, strength, gels: List<String> = empty),
+// FlashSpec(hotspotSize, falloff, kelvin, strength, gels: List<String> = empty, backgroundDrop: Float = 0.6f /* optional in JSON */),
 // LensScale(vignette = 1f, edgeSoftness = 1f, chromaticAberration = 1f),
 // CardSpec(body: CardBody, bodyColor: "#RRGGBB", accentColor: "#RRGGBB")
 enum class CardBody { DISPOSABLE, COMPACT, INSTANT, TOY }

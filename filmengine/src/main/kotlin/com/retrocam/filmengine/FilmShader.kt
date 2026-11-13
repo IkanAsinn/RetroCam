@@ -99,6 +99,7 @@ uniform float uCaPx;
 uniform float uEdgeSoft;
 uniform vec3 uFlash;          // hotspot size, falloff, strength
 uniform vec3 uFlashTint;
+uniform float uFlashBg;       // flash background drop (0 = off)
 uniform float uHalStrength;
 uniform vec3 uHalTint;
 uniform vec4 uFlare;          // style (0 none, 1 warm, 2 rainbow), strength, centre x, centre y
@@ -106,6 +107,7 @@ uniform vec4 uLeak;           // strength, angle, offset, 0
 uniform vec3 uLeakTint;
 uniform vec2 uVig;            // strength, softness
 uniform vec2 uGrain;          // amount, size px at reference
+uniform float uStrength;      // 0..1 filter strength (1 = full film look, 0 = untouched input)
 
 const vec3 LUMA = vec3(${FilmMath.LUMA_R}, ${FilmMath.LUMA_G}, ${FilmMath.LUMA_B});
 const float GAMMA = ${FilmMath.GAMMA};
@@ -213,6 +215,14 @@ void main() {
         col = mix(col, sum / 7.0, min(1.0, bw * 1.5));
     }
 
+    // 1b. Flash background falloff: the flash lights the near subject, the dark far background drops
+    // toward black (before exposure/LUT so the film's own black lift and tint still apply).
+    if (uFlashBg > 0.0) {
+        float bl = dot(col, LUMA);
+        float drop = uFlashBg * (1.0 - smoothstep(${FilmMath.BG_LUMA_LO}, ${FilmMath.BG_LUMA_HI}, bl)) * mix(${FilmMath.BG_RADIAL_MIN}, 1.0, clamp(r, 0.0, 1.0));
+        col *= 1.0 - clamp(drop, 0.0, 1.0);
+    }
+
     // 2. Exposure (gamma-ish linear space)
     vec3 c = col;
     if (uExposureMul != 1.0) {
@@ -292,7 +302,13 @@ void main() {
         c += (vec3(n) * 0.85 + chroma * 0.3) * (0.25 * uGrain.x * w);
     }
 
-    fragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+    c = clamp(c, 0.0, 1.0);
+    // 13. Filter strength: blend with the plain input sample (no CA, edge blur, grain or vignette).
+    // The branch keeps strength 1 bit-identical to the unblended result.
+    if (uStrength < 1.0) {
+        c = mix(fetch(uv), c, uStrength);
+    }
+    fragColor = vec4(c, 1.0);
 }
 """
 }
