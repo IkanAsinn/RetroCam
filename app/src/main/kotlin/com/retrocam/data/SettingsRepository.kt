@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.retrocam.logic.StrengthMath
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -27,6 +28,7 @@ private object Keys {
     val zoomUnlocked = booleanPreferencesKey("zoom_unlocked")
     val facing = stringPreferencesKey("facing")
     val frameOption = booleanPreferencesKey("frame_option")
+    val strengthPercent = stringPreferencesKey("strength_pct")
 }
 
 private inline fun <reified E : Enum<E>> Preferences.enumOr(key: Preferences.Key<String>, default: E): E {
@@ -51,6 +53,7 @@ fun Preferences.toSettings(): Settings {
         zoomUnlocked = this[Keys.zoomUnlocked] ?: d.zoomUnlocked,
         facing = enumOr(Keys.facing, d.facing),
         frameOption = this[Keys.frameOption] ?: d.frameOption,
+        strengthPercent = StrengthMath.decode(this[Keys.strengthPercent]),
     )
 }
 
@@ -69,6 +72,8 @@ fun MutablePreferences.writeSettings(s: Settings) {
     this[Keys.zoomUnlocked] = s.zoomUnlocked
     this[Keys.facing] = s.facing.name
     this[Keys.frameOption] = s.frameOption
+    val strengths = StrengthMath.encode(s.strengthPercent)
+    if (strengths.isEmpty()) remove(Keys.strengthPercent) else this[Keys.strengthPercent] = strengths
 }
 
 class SettingsRepository(context: Context) {

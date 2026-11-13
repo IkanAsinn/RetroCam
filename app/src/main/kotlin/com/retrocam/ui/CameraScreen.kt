@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -72,6 +73,11 @@ fun CameraScreen(viewModel: CameraViewModel, crashLogger: CrashLogger, hasLocati
     val flashAlpha = remember { Animatable(0f) }
     var showSettings by remember { mutableStateOf(false) }
 
+    // Strength row: an overlay on the bottom edge of the viewfinder area (so the viewfinder never resizes).
+    // Hides on camera change and after 4 s without interaction; [strengthTouch] restarts that timer.
+    var strengthOpen by remember { mutableStateOf(false) }
+    var strengthTouch by remember { mutableIntStateOf(0) }
+
     // Camera follows the lifecycle: (re)bind every time the screen starts; CameraX releases it on stop.
     LaunchedEffect(owner) {
         owner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { viewModel.bindCamera(owner) }
@@ -107,6 +113,14 @@ fun CameraScreen(viewModel: CameraViewModel, crashLogger: CrashLogger, hasLocati
 
     // Camera-type name flashes briefly when the selection changes (not at startup).
     val selected = state.selected
+    LaunchedEffect(selected?.id) { strengthOpen = false }
+    LaunchedEffect(strengthOpen, strengthTouch) {
+        if (strengthOpen) {
+            delay(STRENGTH_AUTO_HIDE_MS)
+            strengthOpen = false
+        }
+    }
+    val strengthPercent = state.settings.strengthFor(selected?.id)
     var seenName by remember { mutableStateOf<String?>(null) }
     var nameVisible by remember { mutableStateOf(false) }
     LaunchedEffect(selected?.name) {
@@ -147,8 +161,10 @@ fun CameraScreen(viewModel: CameraViewModel, crashLogger: CrashLogger, hasLocati
                     onLeaks = viewModel::cycleLeaks,
                     onDate = viewModel::toggleDateStamp,
                     onTimer = viewModel::cycleTimer,
+                    onStrength = { strengthOpen = !strengthOpen; strengthTouch++ },
                     onSettings = { showSettings = true },
                 ),
+                strengthOpen = strengthOpen,
                 modifier = Modifier.statusBarsPadding().padding(top = 4.dp),
             )
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -169,6 +185,15 @@ fun CameraScreen(viewModel: CameraViewModel, crashLogger: CrashLogger, hasLocati
                         onCancelTimer = viewModel::cancelTimer,
                     ),
                 )
+                if (strengthOpen && state.ready) {
+                    StrengthRow(
+                        percent = strengthPercent,
+                        onChange = viewModel::setStrength,
+                        onInteraction = { strengthTouch++ },
+                        rotation = rotation,
+                        modifier = Modifier.align(Alignment.BottomCenter).padding(horizontal = 12.dp, vertical = 8.dp),
+                    )
+                }
             }
             ZoomChips(
                 stops = camera?.zoomStops.orEmpty(),
@@ -182,6 +207,8 @@ fun CameraScreen(viewModel: CameraViewModel, crashLogger: CrashLogger, hasLocati
                     selectedIndex = state.selectedIndex,
                     onSelect = { viewModel.selectCamera(state.profiles[it].id) },
                     rotation = rotation,
+                    selectedStrengthPercent = strengthPercent,
+                    onSelectedTap = { strengthOpen = !strengthOpen; strengthTouch++ },
                 )
             } else {
                 Box(Modifier.fillMaxWidth().padding(top = 100.dp))
@@ -261,3 +288,5 @@ private fun appVersionName(context: android.content.Context): String = try {
 } catch (_: Throwable) {
     ""
 }
+
+private const val STRENGTH_AUTO_HIDE_MS = 4_000L

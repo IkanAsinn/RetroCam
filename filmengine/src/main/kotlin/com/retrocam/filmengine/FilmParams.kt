@@ -19,6 +19,7 @@ data class FilmParams(
     val leak: LeakLook? = null,            // null = no light leak
     val colorShift: Rgb = Rgb(0f, 0f, 0f), // per-shot random cast, added after LUT (-0.1..0.1)
     val seed: Int = 0,                     // per-shot random seed: grain pattern, leak position, flare
+    val strength: Float = 1f,              // 0..1 filter strength: mix(unprocessed input, film result, strength); 1 = full look
 ) {
     companion object {
         const val REFERENCE_SHORT_EDGE = 1080
@@ -33,6 +34,7 @@ data class FlashLook(
     val kelvin: Float,
     val strength: Float,
     val gel: Rgb? = null,
+    val backgroundDrop: Float = 0f, // 0..1: pushes dark, far-from-centre regions toward black (disposable-flash falloff)
 )
 
 /** Centre in 0..1 UV. */

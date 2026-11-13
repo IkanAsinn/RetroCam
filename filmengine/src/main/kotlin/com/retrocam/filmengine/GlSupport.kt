@@ -234,6 +234,7 @@ internal class FilmProgram(external: Boolean) {
         GLES30.glUniform1f(loc("uCaPx"), p.chromaticAberrationPx)
         GLES30.glUniform1f(loc("uEdgeSoft"), p.edgeSoftness)
 
+        GLES30.glUniform1f(loc("uFlashBg"), p.flash?.backgroundDrop?.coerceIn(0f, 1f) ?: 0f)
         val f = p.flash
         if (f != null && f.strength > 0f) {
             GLES30.glUniform3f(loc("uFlash"), f.hotspotSize, f.falloff, f.strength)
@@ -266,6 +267,7 @@ internal class FilmProgram(external: Boolean) {
 
         GLES30.glUniform2f(loc("uVig"), p.vignetteStrength, p.vignetteSoftness)
         GLES30.glUniform2f(loc("uGrain"), p.grainAmount, p.grainSizePx)
+        GLES30.glUniform1f(loc("uStrength"), FilmMath.clampStrength(p.strength))
     }
 
     fun release() {

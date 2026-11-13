@@ -22,11 +22,13 @@ import com.retrocam.filmengine.Highlight
 import com.retrocam.logic.Countdown
 import com.retrocam.logic.LensMapping
 import com.retrocam.logic.ShutterGate
+import com.retrocam.logic.StrengthMath
 import com.retrocam.profiles.CameraProfile
 import com.retrocam.profiles.EffectToggles
 import com.retrocam.profiles.LensKind
 import com.retrocam.profiles.ParamsMapper
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -37,6 +39,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
@@ -75,6 +78,7 @@ private data class PreviewInputs(
     val lens: LensKind,
     val flashActive: Boolean,
     val highlight: Highlight?,
+    val strengthPercent: Int,
 )
 
 class CameraViewModel(private val container: AppContainer) : ViewModel() {
@@ -124,6 +128,7 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
 
     // ---------------------------------------------------------------- startup
 
+    @OptIn(FlowPreview::class)
     private fun loadProfilesAndSettings() = viewModelScope.launch {
         val profiles = withContext(Dispatchers.Default) { safely { container.profileRepository.all() } ?: emptyList() }
         val stored = safely { settingsRepo.settings.first() } ?: Settings()
@@ -132,8 +137,17 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
         _settings.value = stored.copy(cameraId = id)
         _loaded.value = true
         // Persist every later change; conflated so a burst of taps writes once.
+        // Strength-only changes (slider drag) wait 250 ms so a drag writes once; everything else saves at once.
+        var lastRest: Settings? = null
         launch {
-            _settings.drop(1).collectLatest { s -> safely { settingsRepo.save(s) } }
+            _settings.drop(1)
+                .debounce { s ->
+                    val rest = s.copy(strengthPercent = emptyMap())
+                    val onlyStrength = rest == lastRest
+                    lastRest = rest
+                    if (onlyStrength) 250L else 0L
+                }
+                .collectLatest { s -> safely { settingsRepo.save(s) } }
         }
     }
 
@@ -184,10 +198,10 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
             _settings.map { it.toggles }.distinctUntilChanged(),
             controller.state.map { it?.lensKind }.distinctUntilChanged(),
             combine(_settings.map { it.flash == FlashMode.ON }, hasFlashUnit()) { on, unit -> on && unit }.distinctUntilChanged(),
-            highlight,
-        ) { profile, toggles, lens, flash, bright ->
+            combine(highlight, _settings.map { it.strengthFor(it.cameraId) }.distinctUntilChanged()) { h, st -> h to st },
+        ) { profile, toggles, lens, flash, (bright, strength) ->
             profile?.let {
-                PreviewInputs(it, toggles, lens?.let(LensMapping::toLensKind) ?: LensKind.MAIN, flash, bright)
+                PreviewInputs(it, toggles, lens?.let(LensMapping::toLensKind) ?: LensKind.MAIN, flash, bright, strength)
             }
         }
         viewModelScope.launch(Dispatchers.Default) {
@@ -204,7 +218,7 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
                         brightHighlight = input.highlight != null,
                         highlightX = input.highlight?.x,
                         highlightY = input.highlight?.y,
-                    )
+                    ).copy(strength = StrengthMath.toStrength(input.strengthPercent))
                     effect.update(params, lut)
                 } catch (e: CancellationException) {
                     throw e
@@ -228,6 +242,12 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
         val list = _profiles.value
         val current = list.indexOfFirst { it.id == _settings.value.cameraId }.coerceAtLeast(0)
         list.getOrNull(current + delta)?.let { selectCamera(it.id) }
+    }
+
+    /** Film strength (percent, 0..100) of the currently selected camera type. */
+    fun setStrength(percent: Int) = update { s ->
+        val id = s.cameraId ?: return@update s
+        s.withStrength(id, percent)
     }
 
     fun cycleFlash() {
