@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Compact camera card, Accent details: white, tinted with CardSpec.accentColor. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="96dp"
+    android:viewportWidth="120"
+    android:viewportHeight="96">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M22,31H52A10,10 0 0 1 62,41V64A10,10 0 0 1 52,74H22A10,10 0 0 1 12,64V41A10,10 0 0 1 22,31Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M67,63H107A1,1 0 0 1 108,64V67A1,1 0 0 1 107,68H67A1,1 0 0 1 66,67V64A1,1 0 0 1 67,63Z" />
+</vector>

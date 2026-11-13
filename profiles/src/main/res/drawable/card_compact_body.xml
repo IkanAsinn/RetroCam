@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Compact camera card, Body silhouette: white, tinted with CardSpec.bodyColor. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="96dp"
+    android:viewportWidth="120"
+    android:viewportHeight="96">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M41,20H79A5,5 0 0 1 84,25V27A5,5 0 0 1 79,32H41A5,5 0 0 1 36,27V25A5,5 0 0 1 41,20Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M21,27H99A13,13 0 0 1 112,40V65A13,13 0 0 1 99,78H21A13,13 0 0 1 8,65V40A13,13 0 0 1 21,27Z" />
+</vector>

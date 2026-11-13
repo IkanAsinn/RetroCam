@@ -1,0 +1,63 @@
+{
+  "id": "lebox_red",
+  "name": "Lebox Red",
+  "family": "DISPOSABLE",
+  "release": "1.1",
+  "exposureEv": 0.0,
+  "blackLift": 0.03,
+  "contrast": 1.1,
+  "saturation": 1.0,
+  "grain": {
+    "amount": 0.45,
+    "size": 1.6
+  },
+  "vignette": {
+    "strength": 0.5,
+    "softness": 0.65
+  },
+  "halation": {
+    "strength": 0.25,
+    "tint": "#FF2A10"
+  },
+  "chromaticAberration": 1.4,
+  "edgeSoftness": 0.3,
+  "flash": {
+    "hotspotSize": 0.4,
+    "falloff": 0.7,
+    "kelvin": 4500.0,
+    "strength": 0.75,
+    "gels": []
+  },
+  "flareStyle": "WARM",
+  "frame": "FULL",
+  "dateStampColor": "#FF5A2A",
+  "randomColorShift": 0,
+  "leakBias": 0,
+  "lens": {
+    "ULTRA_WIDE": {
+      "vignette": 1.5,
+      "edgeSoftness": 1.6,
+      "chromaticAberration": 1.6
+    },
+    "MAIN": {
+      "vignette": 1.0,
+      "edgeSoftness": 1.0,
+      "chromaticAberration": 1.0
+    },
+    "TELE": {
+      "vignette": 0.6,
+      "edgeSoftness": 0.7,
+      "chromaticAberration": 0.6
+    },
+    "FRONT": {
+      "vignette": 1.0,
+      "edgeSoftness": 1.0,
+      "chromaticAberration": 1.0
+    }
+  },
+  "card": {
+    "body": "DISPOSABLE",
+    "bodyColor": "#C9322F",
+    "accentColor": "#F2E3C4"
+  }
+}

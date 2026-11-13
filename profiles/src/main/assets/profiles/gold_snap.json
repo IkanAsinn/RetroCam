@@ -1,0 +1,63 @@
+{
+  "id": "gold_snap",
+  "name": "Gold Snap",
+  "family": "DISPOSABLE",
+  "release": "1.0",
+  "exposureEv": -0.3,
+  "blackLift": 0.04,
+  "contrast": 1.1,
+  "saturation": 1.0,
+  "grain": {
+    "amount": 0.45,
+    "size": 1.6
+  },
+  "vignette": {
+    "strength": 0.55,
+    "softness": 0.7
+  },
+  "halation": {
+    "strength": 0.2,
+    "tint": "#FF3A1A"
+  },
+  "chromaticAberration": 1.5,
+  "edgeSoftness": 0.4,
+  "flash": {
+    "hotspotSize": 0.35,
+    "falloff": 0.85,
+    "kelvin": 6500.0,
+    "strength": 0.8,
+    "gels": []
+  },
+  "flareStyle": "WARM",
+  "frame": "FULL",
+  "dateStampColor": "#FF8A1F",
+  "randomColorShift": 0,
+  "leakBias": 0,
+  "lens": {
+    "ULTRA_WIDE": {
+      "vignette": 1.5,
+      "edgeSoftness": 1.6,
+      "chromaticAberration": 1.6
+    },
+    "MAIN": {
+      "vignette": 1.0,
+      "edgeSoftness": 1.0,
+      "chromaticAberration": 1.0
+    },
+    "TELE": {
+      "vignette": 0.6,
+      "edgeSoftness": 0.7,
+      "chromaticAberration": 0.6
+    },
+    "FRONT": {
+      "vignette": 1.0,
+      "edgeSoftness": 1.0,
+      "chromaticAberration": 1.0
+    }
+  },
+  "card": {
+    "body": "DISPOSABLE",
+    "bodyColor": "#E8B53A",
+    "accentColor": "#D9402A"
+  }
+}

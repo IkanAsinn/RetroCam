@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Compact camera card, Fixed-colour details (lens, flash window, viewfinder, shading); drawn on top, never tinted. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="96dp"
+    android:viewportWidth="120"
+    android:viewportHeight="96">
+    <path
+        android:fillColor="#2B2733"
+        android:pathData="M64,14H72A2,2 0 0 1 74,16V17.5A2,2 0 0 1 72,19.5H64A2,2 0 0 1 62,17.5V16A2,2 0 0 1 64,14Z" />
+    <path
+        android:fillColor="#22000000"
+        android:pathData="M22,52A15,15 0 1 0 52,52A15,15 0 1 0 22,52Z" />
+    <path
+        android:fillColor="#2B2733"
+        android:pathData="M23.5,52A13.5,13.5 0 1 0 50.5,52A13.5,13.5 0 1 0 23.5,52Z" />
+    <path
+        android:fillColor="#3A3644"
+        android:pathData="M27,52A10,10 0 1 0 47,52A10,10 0 1 0 27,52Z" />
+    <path
+        android:fillColor="#16131C"
+        android:pathData="M29,52A8,8 0 1 0 45,52A8,8 0 1 0 29,52Z" />
+    <path
+        android:fillColor="#AAFFFFFF"
+        android:pathData="M31.0,48.5A2.5,2.5 0 1 0 36.0,48.5A2.5,2.5 0 1 0 31.0,48.5Z" />
+    <path
+        android:fillColor="#33000000"
+        android:pathData="M62.0,34H62.0A0.8,0.8 0 0 1 62.8,34.8V70.2A0.8,0.8 0 0 1 62.0,71H62.0A0.8,0.8 0 0 1 61.2,70.2V34.8A0.8,0.8 0 0 1 62.0,34Z" />
+    <path
+        android:fillColor="#E8E4DA"
+        android:pathData="M75,33H99A5,5 0 0 1 104,38V46A5,5 0 0 1 99,51H75A5,5 0 0 1 70,46V38A5,5 0 0 1 75,33Z" />
+    <path
+        android:fillColor="#99FFFFFF"
+        android:pathData="M73.5,35H82.5A1.5,1.5 0 0 1 84,36.5V36.5A1.5,1.5 0 0 1 82.5,38H73.5A1.5,1.5 0 0 1 72,36.5V36.5A1.5,1.5 0 0 1 73.5,35Z" />
+    <path
+        android:fillColor="#16131C"
+        android:pathData="M72,56H78A2,2 0 0 1 80,58V60A2,2 0 0 1 78,62H72A2,2 0 0 1 70,60V58A2,2 0 0 1 72,56Z" />
+    <path
+        android:fillColor="#66FFFFFF"
+        android:pathData="M72.3,57H74.2A0.8,0.8 0 0 1 75,57.8V58.0A0.8,0.8 0 0 1 74.2,58.8H72.3A0.8,0.8 0 0 1 71.5,58.0V57.8A0.8,0.8 0 0 1 72.3,57Z" />
+    <path
+        android:fillColor="#16131C"
+        android:pathData="M87.4,59A2.6,2.6 0 1 0 92.6,59A2.6,2.6 0 1 0 87.4,59Z" />
+    <path
+        android:fillColor="#16131C"
+        android:pathData="M95.4,59A2.6,2.6 0 1 0 100.6,59A2.6,2.6 0 1 0 95.4,59Z" />
+    <path
+        android:fillColor="#22000000"
+        android:pathData="M22,71H98A2,2 0 0 1 100,73V74A2,2 0 0 1 98,76H22A2,2 0 0 1 20,74V73A2,2 0 0 1 22,71Z" />
+</vector>

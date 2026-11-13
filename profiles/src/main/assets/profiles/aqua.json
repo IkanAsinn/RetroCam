@@ -1,0 +1,57 @@
+{
+  "id": "aqua",
+  "name": "Aqua",
+  "family": "DISPOSABLE",
+  "release": "1.1",
+  "exposureEv": 0.1,
+  "blackLift": 0.05,
+  "contrast": 0.9,
+  "saturation": 0.95,
+  "grain": {
+    "amount": 0.45,
+    "size": 1.6
+  },
+  "vignette": {
+    "strength": 0.25,
+    "softness": 0.9
+  },
+  "halation": {
+    "strength": 0.1,
+    "tint": "#40C0FF"
+  },
+  "chromaticAberration": 0.8,
+  "edgeSoftness": 0.55,
+  "flash": null,
+  "flareStyle": "WARM",
+  "frame": "FULL",
+  "dateStampColor": "#FF8A1F",
+  "randomColorShift": 0,
+  "leakBias": 0,
+  "lens": {
+    "ULTRA_WIDE": {
+      "vignette": 1.5,
+      "edgeSoftness": 1.6,
+      "chromaticAberration": 1.6
+    },
+    "MAIN": {
+      "vignette": 1.0,
+      "edgeSoftness": 1.0,
+      "chromaticAberration": 1.0
+    },
+    "TELE": {
+      "vignette": 0.6,
+      "edgeSoftness": 0.7,
+      "chromaticAberration": 0.6
+    },
+    "FRONT": {
+      "vignette": 1.0,
+      "edgeSoftness": 1.0,
+      "chromaticAberration": 1.0
+    }
+  },
+  "card": {
+    "body": "DISPOSABLE",
+    "bodyColor": "#2D9CC9",
+    "accentColor": "#F2C14E"
+  }
+}

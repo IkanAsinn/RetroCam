@@ -1,0 +1,67 @@
+{
+  "id": "pop_simple",
+  "name": "Pop Simple",
+  "family": "DISPOSABLE",
+  "release": "1.0",
+  "exposureEv": 0.0,
+  "blackLift": 0.02,
+  "contrast": 1.2,
+  "saturation": 1.1,
+  "grain": {
+    "amount": 0.45,
+    "size": 1.6
+  },
+  "vignette": {
+    "strength": 0.75,
+    "softness": 0.6
+  },
+  "halation": {
+    "strength": 0.15,
+    "tint": "#FF2040"
+  },
+  "chromaticAberration": 1.8,
+  "edgeSoftness": 0.4,
+  "flash": {
+    "hotspotSize": 0.4,
+    "falloff": 0.8,
+    "kelvin": 5500.0,
+    "strength": 0.85,
+    "gels": [
+      "#FF3B30",
+      "#2F6BFF",
+      "#FFD60A"
+    ]
+  },
+  "flareStyle": "RANDOM",
+  "frame": "FULL",
+  "dateStampColor": "#FF8A1F",
+  "randomColorShift": 0,
+  "leakBias": 0,
+  "lens": {
+    "ULTRA_WIDE": {
+      "vignette": 1.5,
+      "edgeSoftness": 1.6,
+      "chromaticAberration": 1.6
+    },
+    "MAIN": {
+      "vignette": 1.0,
+      "edgeSoftness": 1.0,
+      "chromaticAberration": 1.0
+    },
+    "TELE": {
+      "vignette": 0.6,
+      "edgeSoftness": 0.7,
+      "chromaticAberration": 0.6
+    },
+    "FRONT": {
+      "vignette": 1.0,
+      "edgeSoftness": 1.0,
+      "chromaticAberration": 1.0
+    }
+  },
+  "card": {
+    "body": "DISPOSABLE",
+    "bodyColor": "#E8447A",
+    "accentColor": "#35B8E8"
+  }
+}

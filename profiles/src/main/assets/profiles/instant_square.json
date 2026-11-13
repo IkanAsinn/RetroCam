@@ -1,0 +1,63 @@
+{
+  "id": "instant_square",
+  "name": "Instant Square",
+  "family": "INSTANT",
+  "release": "1.0",
+  "exposureEv": 0.2,
+  "blackLift": 0.06,
+  "contrast": 0.85,
+  "saturation": 0.85,
+  "grain": {
+    "amount": 0.03,
+    "size": 1.0
+  },
+  "vignette": {
+    "strength": 0.3,
+    "softness": 0.9
+  },
+  "halation": {
+    "strength": 0.1,
+    "tint": "#FF8060"
+  },
+  "chromaticAberration": 0.4,
+  "edgeSoftness": 0.7,
+  "flash": {
+    "hotspotSize": 0.8,
+    "falloff": 0.3,
+    "kelvin": 5200.0,
+    "strength": 1.0,
+    "gels": []
+  },
+  "flareStyle": "WARM",
+  "frame": "INSTANT_SQUARE",
+  "dateStampColor": "#FF8A1F",
+  "randomColorShift": 0,
+  "leakBias": 0,
+  "lens": {
+    "ULTRA_WIDE": {
+      "vignette": 1.3,
+      "edgeSoftness": 1.3,
+      "chromaticAberration": 1.4
+    },
+    "MAIN": {
+      "vignette": 1.0,
+      "edgeSoftness": 1.0,
+      "chromaticAberration": 1.0
+    },
+    "TELE": {
+      "vignette": 0.6,
+      "edgeSoftness": 0.7,
+      "chromaticAberration": 0.6
+    },
+    "FRONT": {
+      "vignette": 1.0,
+      "edgeSoftness": 1.0,
+      "chromaticAberration": 1.0
+    }
+  },
+  "card": {
+    "body": "INSTANT",
+    "bodyColor": "#F0E6D0",
+    "accentColor": "#F2B544"
+  }
+}

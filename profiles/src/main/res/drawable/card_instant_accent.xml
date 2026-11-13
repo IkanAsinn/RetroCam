@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Instant camera card, Accent details: white, tinted with CardSpec.accentColor. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="96dp"
+    android:viewportWidth="120"
+    android:viewportHeight="96">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M26,6H94A8,8 0 0 1 102,14V14A8,8 0 0 1 94,22H26A8,8 0 0 1 18,14V14A8,8 0 0 1 26,6Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M18.1,14H101.9A0.1,0.1 0 0 1 102,14.1V21.9A0.1,0.1 0 0 1 101.9,22H18.1A0.1,0.1 0 0 1 18,21.9V14.1A0.1,0.1 0 0 1 18.1,14Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M19,77H101A1,1 0 0 1 102,78V82A1,1 0 0 1 101,83H19A1,1 0 0 1 18,82V78A1,1 0 0 1 19,77Z" />
+</vector>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Toy camera card, Body silhouette: white, tinted with CardSpec.bodyColor. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="96dp"
+    android:viewportWidth="120"
+    android:viewportHeight="96">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M51,8H69A5,5 0 0 1 74,13V17A5,5 0 0 1 69,22H51A5,5 0 0 1 46,17V13A5,5 0 0 1 51,8Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M22,17H98A12,12 0 0 1 110,29V76A12,12 0 0 1 98,88H22A12,12 0 0 1 10,76V29A12,12 0 0 1 22,17Z" />
+</vector>
