@@ -86,9 +86,9 @@ LOOKS: Dict[str, Look] = {
         sat_bands={0: 1.15, 30: 1.0, 60: 1.05, 120: 0.8, 180: 1.0, 240: 1.05}, hue_shifts=[(120, 40, -16)],
         shadow=("#6E6234", 0.30), highlight=("#FFF1C8", 0.12)),
     "green_snap": Look(  # Fuji single-use scan: olive-green blacks and mid greys, warm-pink highlights and skin
-        gains=(0.955, 1.0, 0.965), curve=C(k=2.4, lift=0.03, white=0.985), sat=0.97,
-        sat_bands={0: 1.1, 30: 1.0, 60: 1.0, 120: 0.95, 240: 0.85}, hue_shifts=[(240, 35, -14)],
-        shadow=("#64874B", 0.13), highlight=("#FFE1EB", 0.55)),
+        gains=(0.925, 1.0, 0.95), curve=C(k=2.4, lift=0.03, white=0.985), sat=0.97,
+        sat_bands={0: 1.15, 30: 1.08, 60: 1.0, 120: 0.95, 240: 0.85}, hue_shifts=[(240, 35, -14)],
+        shadow=("#648540", 0.23), highlight=("#FFE1EB", 0.55)),
     "mono_snap": Look(  # B&W, punchy mids
         mono=(0.34, 0.50, 0.16), curve=C(k=3.4, lift=0.03, white=0.985),
         shadow=("#7A6040", 0.08), highlight=("#FFF4E0", 0.05)),
