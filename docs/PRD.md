@@ -193,7 +193,7 @@ Accessibility
 App icon
 A charcoal retro compact camera with warm amber and orange stripes, on a cream background with an amber sun disc. It's an original design with no brand logos.
 
-- Adaptive icon (Android 8+): vector foreground, background and monochrome layers, so it stays sharp on every screen and needs no PNG sizes.
+- Adaptive icon (Android 8+, so every supported version): vector foreground, background and monochrome layers, so it stays sharp on every screen and needs no PNG sizes.
 - Monochrome layer supports Android 13+ themed icons.
 - Files: res/drawable/ic_launcher_foreground.xmlres/drawable/ic_launcher_foreground.xml, ic_launcher_background.xmlic_launcher_background.xml, ic_launcher_monochrome.xmlic_launcher_monochrome.xml, res/mipmap-anydpi-v26/ic_launcher.xmlres/mipmap-anydpi-v26/ic_launcher.xml and ic_launcher_round.xmlic_launcher_round.xml, plus a 512 px PNG for the GitHub README.
 - Colours: cream #F4E8D2, amber #F2B544, orange #E2683A, charcoal #2B2733.
@@ -236,8 +236,8 @@ Targets are measured on your own phone as the reference device.
 | Tap to photo saved (12 MP) | ≤ 1.0 s, processed in the background so the next shot is not blocked |
 | Release APK size | ≤ 10 MB (arm64-v8a) |
 | Memory while shooting | ≤ 250 MB peak |
-| Minimum Android | 8.0 (API 26); target and compile SDK 36 |
-| Devices | Any phone with OpenGL ES 3.0 (all API 26+ phones in practice) |
+| Minimum Android | 9 (API 28); target and compile SDK 36 |
+| Devices | Any phone with OpenGL ES 3.0 (all API 28+ phones in practice) |
 | Crash-free sessions | ≥ 99.5% in beta |
 | Battery | Preview pipeline idles when the app is backgrounded; camera released in onStop |
 

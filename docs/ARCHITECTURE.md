@@ -10,7 +10,7 @@ requirements.
 - Root package `com.retrocam`. Modules: `:app`, `:camera`, `:filmengine`, `:profiles`.
 - Dependency graph: `:app → :camera, :filmengine, :profiles`; `:profiles → :filmengine`;
   `:camera` and `:filmengine` depend on no other project module.
-- minSdk 26, targetSdk/compileSdk 36, JDK 21 toolchain, Kotlin 2.x, version catalog
+- minSdk 28 (Android 9+), targetSdk/compileSdk 36, JDK 21 toolchain, Kotlin 2.x, version catalog
   at `gradle/libs.versions.toml`. Only add libraries through the catalog.
 - Local SDK: `export ANDROID_HOME=/opt/android-sdk` (or `local.properties`, gitignored).
 - Every change must pass: `./gradlew assembleDebug testDebugUnitTest lintDebug`
@@ -207,7 +207,7 @@ animation (200 ms), camera strip, settings sheet, adaptive app icon.
 
 Manifest: `CAMERA`, `VIBRATE`, `ACCESS_FINE_LOCATION`/`ACCESS_COARSE_LOCATION`
 (requested only when the user enables EXIF location), and
-`WRITE_EXTERNAL_STORAGE` with `maxSdkVersion="28"` (MediaStore on API 26–28
+`WRITE_EXTERNAL_STORAGE` with `maxSdkVersion="28"` (MediaStore on API 28
 still needs it to write to Pictures/RetroCam). Activity:
 `screenOrientation="portrait"` (layout fixed like the stock camera, never restarts on
 rotation) plus `configChanges` for screen size/layout; `OrientationWatcher` drives the
