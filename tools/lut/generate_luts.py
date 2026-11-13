@@ -77,18 +77,18 @@ def C(**kw) -> Curve:
 # Order = PRD table order. Hue centres: red 0, orange 30, yellow 60, green 120, cyan 180, blue 240, magenta 300.
 LOOKS: Dict[str, Look] = {
     # ---------------- Disposables ----------------
-    "gold_snap": Look(  # warm yellow-orange, punchy reds, lifted shadows
-        gains=(1.05, 1.0, 0.86), curve=C(k=2.6, lift=0.05, white=0.975), sat=1.06,
-        sat_bands={0: 1.2, 30: 1.0, 240: 0.85}, hue_shifts=[(110, 40, -10)],
-        shadow=("#C98A3A", 0.30), highlight=("#FFD060", 0.18)),
-    "power_800": Look(  # warm, contrasty, slightly muddy shadows
-        gains=(1.06, 0.97, 0.86), curve=C(k=3.6, gamma=1.08, lift=0.045, white=0.98), sat=1.05,
-        sat_bands={0: 1.2, 120: 0.75, 240: 0.8}, hue_shifts=[(120, 40, -14)],
-        shadow=("#7A6A28", 0.45), highlight=("#FFB866", 0.12)),
-    "green_snap": Look(  # cool greens, cyan shadows, neutral skin
-        gains=(0.96, 1.03, 1.0), curve=C(k=2.8, lift=0.025), sat=1.08,
-        sat_bands={120: 1.35, 90: 1.2, 30: 0.95, 0: 0.95}, hue_shifts=[(95, 35, 16), (200, 40, -8)],
-        shadow=("#1FB5A5", 0.45), highlight=("#E8FFF2", 0.10)),
+    "gold_snap": Look(  # Kodak single-use scan: cream-yellow neutrals, olive-brown lifted shadows, punchy reds
+        gains=(0.99, 1.0, 0.95), curve=C(k=2.3, lift=0.04, white=0.98), sat=1.04,
+        sat_bands={0: 1.15, 30: 1.0, 60: 1.05, 120: 0.8, 180: 1.05, 240: 1.1}, hue_shifts=[(120, 40, -16)],
+        shadow=("#787646", 0.22), highlight=("#FFF1C8", 0.12)),
+    "power_800": Look(  # gold_snap family at 800: harder, muddier shadows, a touch more yellow-brown
+        gains=(0.99, 0.995, 0.94), curve=C(k=3.1, gamma=1.07, lift=0.04, white=0.98), sat=1.04,
+        sat_bands={0: 1.15, 30: 1.0, 60: 1.05, 120: 0.8, 180: 1.0, 240: 1.05}, hue_shifts=[(120, 40, -16)],
+        shadow=("#6E6234", 0.30), highlight=("#FFF1C8", 0.12)),
+    "green_snap": Look(  # Fuji single-use scan: olive-green blacks and mid greys, warm-pink highlights and skin
+        gains=(0.955, 1.0, 0.965), curve=C(k=2.4, lift=0.03, white=0.985), sat=0.97,
+        sat_bands={0: 1.1, 30: 1.0, 60: 1.0, 120: 0.95, 240: 0.85}, hue_shifts=[(240, 35, -14)],
+        shadow=("#64874B", 0.13), highlight=("#FFE1EB", 0.55)),
     "mono_snap": Look(  # B&W, punchy mids
         mono=(0.34, 0.50, 0.16), curve=C(k=3.4, lift=0.03, white=0.985),
         shadow=("#7A6040", 0.08), highlight=("#FFF4E0", 0.05)),
@@ -119,9 +119,9 @@ LOOKS: Dict[str, Look] = {
         sat_bands={240: 1.5, 180: 1.3, 0: 1.25, 120: 1.1},
         shadow=("#1E3C8C", 0.18)),
     "street_400": Look(  # greenish, crisp, cool shadows
-        gains=(0.975, 1.02, 1.0), curve=C(k=3.0, lift=0.015), sat=1.06,
+        gains=(0.965, 1.015, 0.985), curve=C(k=3.0, lift=0.025), sat=1.04,
         sat_bands={120: 1.2, 60: 1.1}, hue_shifts=[(60, 30, 10)],
-        shadow=("#2E86B0", 0.40), highlight=("#E6FFDA", 0.12)),
+        shadow=("#468C7D", 0.16), highlight=("#FFF0E6", 0.22)),
     "airy_400": Look(  # bright, mint greens, pastel blues, lifted blacks
         gains=(1.0, 1.015, 1.01), curve=C(k=0.8, gamma=0.9, lift=0.055, white=1.0), sat=0.84,
         sat_bands={120: 1.0, 240: 0.8, 30: 0.9}, hue_shifts=[(120, 40, 20), (240, 35, -14)],

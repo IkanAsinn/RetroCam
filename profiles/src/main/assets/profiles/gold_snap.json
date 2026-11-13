@@ -4,12 +4,12 @@
   "family": "DISPOSABLE",
   "release": "1.0",
   "exposureEv": -0.3,
-  "blackLift": 0.04,
-  "contrast": 1.1,
+  "blackLift": 0.03,
+  "contrast": 1.05,
   "saturation": 1.0,
   "grain": {
-    "amount": 0.45,
-    "size": 1.6
+    "amount": 0.5,
+    "size": 1.7
   },
   "vignette": {
     "strength": 0.55,
@@ -20,11 +20,11 @@
     "tint": "#FF3A1A"
   },
   "chromaticAberration": 1.5,
-  "edgeSoftness": 0.4,
+  "edgeSoftness": 0.45,
   "flash": {
     "hotspotSize": 0.35,
     "falloff": 0.85,
-    "kelvin": 6500.0,
+    "kelvin": 5500.0,
     "strength": 0.8,
     "gels": []
   },
