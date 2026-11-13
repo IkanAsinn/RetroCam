@@ -30,7 +30,8 @@
       "#FF3B30",
       "#2F6BFF",
       "#FFD60A"
-    ]
+    ],
+    "backgroundDrop": 0.8
   },
   "flareStyle": "RANDOM",
   "frame": "FULL",

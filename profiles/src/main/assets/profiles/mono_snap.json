@@ -26,7 +26,8 @@
     "falloff": 0.9,
     "kelvin": 6000.0,
     "strength": 0.9,
-    "gels": []
+    "gels": [],
+    "backgroundDrop": 0.8
   },
   "flareStyle": "WARM",
   "frame": "FULL",
