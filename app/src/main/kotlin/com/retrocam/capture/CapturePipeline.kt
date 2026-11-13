@@ -8,6 +8,7 @@ import com.retrocam.camera.PhotoSaver
 import com.retrocam.data.Settings
 import com.retrocam.filmengine.DateStampRenderer
 import com.retrocam.filmengine.FrameComposer
+import com.retrocam.filmengine.Highlight
 import com.retrocam.filmengine.OffscreenFilmRenderer
 import com.retrocam.logic.FrameSelection
 import com.retrocam.logic.LensMapping
@@ -29,7 +30,7 @@ class ShotRequest(
     val frame: CapturedFrame,
     val profile: CameraProfile,
     val settings: Settings,
-    val brightHighlight: Boolean,
+    val highlight: Highlight?,
     val location: Location?,
 )
 
@@ -55,7 +56,9 @@ class CapturePipeline(
                 lens = LensMapping.toLensKind(frame.lens),
                 flashActive = frame.flashFired,
                 seed = random.nextInt(), // new grain pattern, leak and colour drift every shot
-                brightHighlight = shot.brightHighlight,
+                brightHighlight = shot.highlight != null,
+                highlightX = shot.highlight?.x,
+                highlightY = shot.highlight?.y,
             )
             val rendered = renderer.use { it.render(frame.bitmap, params, lut) }
             toRecycle += rendered

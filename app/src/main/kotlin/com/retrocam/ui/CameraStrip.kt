@@ -44,6 +44,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.retrocam.R
 import com.retrocam.profiles.CameraProfile
+import com.retrocam.profiles.layers
+import com.retrocam.profiles.parseHexArgb
 import com.retrocam.ui.theme.RetroColors
 import kotlinx.coroutines.flow.drop
 import kotlin.math.abs
@@ -130,22 +132,12 @@ private fun CameraCard(profile: CameraProfile, selected: Boolean, rotation: () -
 /** Body tinted with bodyColor, accent tinted with accentColor, detail untinted on top. */
 @Composable
 fun CardArtView(profile: CameraProfile, modifier: Modifier = Modifier) {
-    val layers = remember(profile.card.body) { profile.card.body.artLayers() }
-    val bodyColor = remember(profile.card.bodyColor) { parseColor(profile.card.bodyColor, Color(0xFFBBBBBB)) }
-    val accentColor = remember(profile.card.accentColor) { parseColor(profile.card.accentColor, Color(0xFF808080)) }
+    val layers = remember(profile.card.body) { profile.card.body.layers() }
+    val bodyColor = remember(profile.card.bodyColor) { Color(parseHexArgb(profile.card.bodyColor)) }
+    val accentColor = remember(profile.card.accentColor) { Color(parseHexArgb(profile.card.accentColor)) }
     Box(modifier) {
         Image(painterResource(layers.body), null, Modifier.fillMaxSize(), colorFilter = ColorFilter.tint(bodyColor))
-        if (layers.accent != 0) {
-            Image(painterResource(layers.accent), null, Modifier.fillMaxSize(), colorFilter = ColorFilter.tint(accentColor))
-        }
-        if (layers.detail != 0) {
-            Image(painterResource(layers.detail), null, Modifier.fillMaxSize())
-        }
+        Image(painterResource(layers.accent), null, Modifier.fillMaxSize(), colorFilter = ColorFilter.tint(accentColor))
+        Image(painterResource(layers.detail), null, Modifier.fillMaxSize())
     }
-}
-
-private fun parseColor(hex: String, fallback: Color): Color = try {
-    Color(android.graphics.Color.parseColor(hex))
-} catch (_: IllegalArgumentException) {
-    fallback
 }

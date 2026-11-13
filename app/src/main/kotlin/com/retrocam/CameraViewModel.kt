@@ -13,12 +13,12 @@ import com.retrocam.camera.Facing
 import com.retrocam.camera.FlashMode
 import com.retrocam.capture.CapturePipeline
 import com.retrocam.capture.ShotRequest
-import com.retrocam.capture.hasHighlight
 import com.retrocam.data.Settings
 import com.retrocam.data.TimerSetting
 import com.retrocam.data.cycleNext
 import com.retrocam.filmengine.DateStampFormat
 import com.retrocam.filmengine.FilmCameraEffect
+import com.retrocam.filmengine.Highlight
 import com.retrocam.logic.Countdown
 import com.retrocam.logic.LensMapping
 import com.retrocam.logic.ShutterGate
@@ -74,7 +74,7 @@ private data class PreviewInputs(
     val toggles: EffectToggles,
     val lens: LensKind,
     val flashActive: Boolean,
-    val highlight: Boolean,
+    val highlight: Highlight?,
 )
 
 class CameraViewModel(private val container: AppContainer) : ViewModel() {
@@ -98,7 +98,7 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
         Log.e(TAG, "preview effect error", t)
         message(R.string.msg_preview_error)
     }
-    private val highlight: StateFlow<Boolean> = effect.hasHighlight(viewModelScope)
+    private val highlight: StateFlow<Highlight?> = effect.highlight
 
     val uiEvents: Flow<UiEvent> = events.receiveAsFlow()
     val surfaceRequest = controller.surfaceRequest
@@ -201,7 +201,9 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
                         lens = input.lens,
                         flashActive = input.flashActive,
                         seed = PREVIEW_SEED,
-                        brightHighlight = input.highlight,
+                        brightHighlight = input.highlight != null,
+                        highlightX = input.highlight?.x,
+                        highlightY = input.highlight?.y,
                     )
                     effect.update(params, lut)
                 } catch (e: CancellationException) {
@@ -372,6 +374,7 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
     override fun onCleared() {
         cancelTimer()
         safely { controller.unbind() }
+        safely { controller.close() }
         safely { effect.release() }
         container.renderer.requestRelease() // deferred while a photo is still being saved
         container.shutterFeedback.release()
