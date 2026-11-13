@@ -12,3 +12,4 @@ captures/
 .DS_Store
 __pycache__/
 *.hprof
+.claude/worktrees/
