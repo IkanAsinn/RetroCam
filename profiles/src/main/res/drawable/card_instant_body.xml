@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Instant camera card, Body silhouette: white, tinted with CardSpec.bodyColor. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="96dp"
+    android:viewportWidth="120"
+    android:viewportHeight="96">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M29,6H91A11,11 0 0 1 102,17V79A11,11 0 0 1 91,90H29A11,11 0 0 1 18,79V17A11,11 0 0 1 29,6Z" />
+</vector>

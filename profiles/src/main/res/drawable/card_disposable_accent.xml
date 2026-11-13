@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Disposable camera card, Accent details: white, tinted with CardSpec.accentColor. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="96dp"
+    android:viewportWidth="120"
+    android:viewportHeight="96">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M35,54H85A2,2 0 0 1 87,56V78A2,2 0 0 1 85,80H35A2,2 0 0 1 33,78V56A2,2 0 0 1 35,54Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M34,22H86A1,1 0 0 1 87,23V26A1,1 0 0 1 86,27H34A1,1 0 0 1 33,26V23A1,1 0 0 1 34,22Z" />
+</vector>

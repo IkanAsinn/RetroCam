@@ -1,0 +1,63 @@
+{
+  "id": "vivid_100",
+  "name": "Vivid 100",
+  "family": "COMPACT",
+  "release": "1.0",
+  "exposureEv": 0.0,
+  "blackLift": 0.0,
+  "contrast": 1.15,
+  "saturation": 1.05,
+  "grain": {
+    "amount": 0.15,
+    "size": 1.0
+  },
+  "vignette": {
+    "strength": 0.15,
+    "softness": 0.5
+  },
+  "halation": {
+    "strength": 0.05,
+    "tint": "#FF3A20"
+  },
+  "chromaticAberration": 0.3,
+  "edgeSoftness": 0.0,
+  "flash": {
+    "hotspotSize": 0.6,
+    "falloff": 0.5,
+    "kelvin": 5500.0,
+    "strength": 0.7,
+    "gels": []
+  },
+  "flareStyle": "RAINBOW",
+  "frame": "FULL",
+  "dateStampColor": "#FF8A1F",
+  "randomColorShift": 0,
+  "leakBias": 0,
+  "lens": {
+    "ULTRA_WIDE": {
+      "vignette": 1.3,
+      "edgeSoftness": 1.4,
+      "chromaticAberration": 1.5
+    },
+    "MAIN": {
+      "vignette": 1.0,
+      "edgeSoftness": 1.0,
+      "chromaticAberration": 1.0
+    },
+    "TELE": {
+      "vignette": 0.6,
+      "edgeSoftness": 0.7,
+      "chromaticAberration": 0.6
+    },
+    "FRONT": {
+      "vignette": 1.0,
+      "edgeSoftness": 1.0,
+      "chromaticAberration": 1.0
+    }
+  },
+  "card": {
+    "body": "COMPACT",
+    "bodyColor": "#2F5FD0",
+    "accentColor": "#F2B544"
+  }
+}

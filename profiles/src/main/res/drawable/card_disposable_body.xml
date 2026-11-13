@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Disposable camera card, Body silhouette: white, tinted with CardSpec.bodyColor. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="96dp"
+    android:viewportWidth="120"
+    android:viewportHeight="96">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M38,5H48A3,3 0 0 1 51,8V11A3,3 0 0 1 48,14H38A3,3 0 0 1 35,11V8A3,3 0 0 1 38,5Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M41,9H79A8,8 0 0 1 87,17V82A8,8 0 0 1 79,90H41A8,8 0 0 1 33,82V17A8,8 0 0 1 41,9Z" />
+</vector>
