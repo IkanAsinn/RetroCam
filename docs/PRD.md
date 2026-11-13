@@ -73,8 +73,8 @@ RetroCam ships 20 camera types at v1.0 and 5 more in v1.1, across six families. 
 
 | In-app name | Inspired by | Colour character | Grain | Flash | Extras | Release |
 |---|---|---|---|---|---|---|
-| Instant Square | Polaroid 600 | Faded, creamy highlights, warm-green cast | Soft (no grain, low sharpness) | Strong, washed-out | White square frame option, soft focus | v1.0 |
-| Instant Mini | Fujifilm Instax Mini | Bright, high-key, cool | Fine | Bright | Credit-card frame option | v1.0 |
+| Instant Square | Fujifilm Instax Square | Vivid, high-key, punchy; dense shadows, highlights blow early, clean slightly cool whites | Fine | Bright, fairly even, neutral-cool | White square frame option, a touch softer than Mini | v1.0 |
+| Instant Mini | Fujifilm Instax Mini | Vivid, high-key, punchy; dense shadows, highlights blow early, clean slightly cool whites | Fine | Bright, fairly even, neutral-cool | Credit-card frame option | v1.0 |
 
 ### Black and white
 

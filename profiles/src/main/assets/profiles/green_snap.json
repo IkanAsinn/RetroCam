@@ -4,27 +4,27 @@
   "family": "DISPOSABLE",
   "release": "1.0",
   "exposureEv": 0.0,
-  "blackLift": 0.02,
-  "contrast": 1.05,
-  "saturation": 1.0,
+  "blackLift": 0.025,
+  "contrast": 1.0,
+  "saturation": 0.98,
   "grain": {
-    "amount": 0.45,
-    "size": 1.5
+    "amount": 0.5,
+    "size": 1.6
   },
   "vignette": {
-    "strength": 0.3,
+    "strength": 0.4,
     "softness": 0.6
   },
   "halation": {
     "strength": 0.1,
     "tint": "#FF5030"
   },
-  "chromaticAberration": 0.8,
-  "edgeSoftness": 0.25,
+  "chromaticAberration": 1.2,
+  "edgeSoftness": 0.35,
   "flash": {
     "hotspotSize": 0.45,
     "falloff": 0.55,
-    "kelvin": 7500.0,
+    "kelvin": 6800.0,
     "strength": 0.7,
     "gels": []
   },

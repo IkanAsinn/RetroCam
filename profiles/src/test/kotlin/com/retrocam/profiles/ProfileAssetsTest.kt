@@ -99,8 +99,8 @@ class ProfileAssetsTest {
         fun p(id: String) = profiles.first { it.id == id }
         assertEquals(0.7f, p("airy_400").exposureEv, 1e-6f)
         assertEquals(FrameFormat.INSTANT_SQUARE, p("instant_square").frame)
-        assertTrue(p("instant_square").grain.amount < 0.1f)
-        assertTrue(p("instant_square").edgeSoftness >= 0.6f)
+        assertTrue(p("instant_square").grain.amount <= 0.3f)
+        assertTrue(p("instant_square").edgeSoftness >= p("instant_mini").edgeSoftness)
         assertEquals(FrameFormat.INSTANT_MINI, p("instant_mini").frame)
         assertEquals(FrameFormat.SQUARE, p("plastic_120").frame)
         assertEquals(FrameFormat.HALF_FRAME, p("half_frame").frame)

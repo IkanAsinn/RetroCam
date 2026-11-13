@@ -3,13 +3,13 @@
   "name": "Instant Mini",
   "family": "INSTANT",
   "release": "1.0",
-  "exposureEv": 0.25,
-  "blackLift": 0.02,
-  "contrast": 1.0,
-  "saturation": 1.0,
+  "exposureEv": 0.2,
+  "blackLift": 0.0,
+  "contrast": 1.1,
+  "saturation": 1.05,
   "grain": {
-    "amount": 0.25,
-    "size": 1.2
+    "amount": 0.2,
+    "size": 1.1
   },
   "vignette": {
     "strength": 0.2,
@@ -23,8 +23,8 @@
   "edgeSoftness": 0.3,
   "flash": {
     "hotspotSize": 0.7,
-    "falloff": 0.4,
-    "kelvin": 6800.0,
+    "falloff": 0.35,
+    "kelvin": 6500.0,
     "strength": 0.9,
     "gels": []
   },
