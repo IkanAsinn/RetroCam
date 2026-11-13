@@ -10,6 +10,7 @@ object RetroColors {
     val Amber = Color(0xFFF2B544)
     val Orange = Color(0xFFE2683A)
     val Charcoal = Color(0xFF2B2733)
+    val CharcoalRaised = Color(0xFF383342)
 }
 
 private val RetroDarkColorScheme = darkColorScheme(
