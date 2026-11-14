@@ -3,6 +3,8 @@ package com.retrocam.ui
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -71,8 +73,10 @@ fun ZoomChips(
     exposure: ExposureChip? = null,
     onExposure: () -> Unit = {},
 ) {
+    // Centred when the chips fit; on narrow screens with many lenses the row scrolls instead of clipping chips.
+    Box(modifier.fillMaxWidth().height(48.dp), contentAlignment = Alignment.Center) {
     Row(
-        modifier = modifier.fillMaxWidth().height(48.dp),
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -143,5 +147,6 @@ fun ZoomChips(
                 )
             }
         }
+    }
     }
 }
