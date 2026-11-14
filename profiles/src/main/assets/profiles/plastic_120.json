@@ -19,8 +19,8 @@
     "strength": 0.15,
     "tint": "#FF3A20"
   },
-  "chromaticAberration": 2.5,
-  "edgeSoftness": 0.85,
+  "chromaticAberration": 1.125,
+  "edgeSoftness": 0.425,
   "flash": null,
   "flareStyle": "RANDOM",
   "frame": "SQUARE",

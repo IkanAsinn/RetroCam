@@ -96,14 +96,24 @@ Shader additions (mirrored in `FilmMath`, the CPU reference):
 - Flash background falloff (only when `flash != null`, `FlashLook.backgroundDrop` > 0): applied to the sampled colour BEFORE
   exposure/LUT, `col *= 1 - backgroundDrop * (1 - smoothstep(0.15, 0.45, luma)) * mix(0.6, 1.0, r)`. Dark, far-from-centre
   regions go toward black (the LUT / blackLift then tint the blacks); lit subjects (luma >= 0.45) are untouched.
-  `FlashSpec.backgroundDrop` is optional in profile JSON (Kotlin default 0.6).
+  `FlashSpec.backgroundDrop` is optional in profile JSON (Kotlin default 0.5).
 - Filter strength (`FilmParams.strength`): last step, `out = mix(plainInputSample, filmColour, uStrength)`; the plain sample has
   no CA, edge blur, grain, vignette or flash drop. Frame borders and the date stamp are composed after the shader and ignore it.
 - App: per-profile strength is stored in DataStore as `Settings.strengthPercent: Map<profileId, Int>` (0..100, step 5, default
   100, key `strength_pct` = `id:pct;id:pct`), applied to both the preview effect and the capture params.
+- v0.3 "less is more" retune (look verified with the software render harness, `tools/render/`):
+  - Flash has NO synthetic hotspot any more (the phone's real flash already lit the frame). `hotspotSize`/`falloff` stay in the
+    API/JSON but are unused by the shader; what remains is the background falloff (above) and a uniform, subtle colour-temperature
+    tint `c *= mix(1, flashTint, FLASH_TINT_MIX(0.35) * strength)` (mirrored in `FilmMath.apply`). Disposable/Instax backgroundDrop is 0.65/0.7.
+  - Grain: bilinear (smoothstep) value noise, not blocky cells; cell size `grainSizePx * uScale * 0.8`; luminance weight
+    `smoothstep(0.02,0.3,l) * (1 - 0.75*smoothstep(0.6,1,l))` (mid-tones strongest, weak in deep shadows/highlights); chroma hint 0.12; amplitude 0.12 * amount.
+  - Chromatic aberration scales with r^2 (corners only); edge softness starts at r=0.6 with a 5 px reference kernel.
+  - Halation only above luma 0.85, gain 1.2. Profile JSON: chromaticAberration x0.45, edgeSoftness x0.5, vignette strength x0.6 (see `tools/render/retune_profiles.py`).
+  - `FilmUniforms.compute(params, w, h, lutSize)` is the single FilmParams -> uniform-values function (used by `FilmProgram.setUniforms` and the
+    JVM dump tool `RenderDumpTool` that feeds the harness); it is public only for that tooling.
 Grain and chromatic aberration scale by `outputShortEdge / REFERENCE_SHORT_EDGE`
-so the 12 MP file looks like the preview. Grain is luminance-dependent (stronger in
-shadows) and reseeded from `seed`.
+so the 12 MP file looks like the preview. Grain is luminance-dependent (strongest in mid-tones)
+and reseeded from `seed`.
 
 ## `:profiles` — `com.retrocam.profiles`
 
@@ -136,7 +146,7 @@ enum class FlareStyleSpec { NONE, WARM, RAINBOW, RANDOM }
     val card: CardSpec,
 )
 // GrainSpec(amount, size), VignetteSpec(strength, softness), HalationSpec(strength, tint "#RRGGBB"),
-// FlashSpec(hotspotSize, falloff, kelvin, strength, gels: List<String> = empty, backgroundDrop: Float = 0.6f /* optional in JSON */),
+// FlashSpec(hotspotSize, falloff, kelvin, strength, gels: List<String> = empty, backgroundDrop: Float = 0.5f /* optional in JSON */),
 // LensScale(vignette = 1f, edgeSoftness = 1f, chromaticAberration = 1f),
 // CardSpec(body: CardBody, bodyColor: "#RRGGBB", accentColor: "#RRGGBB")
 enum class CardBody { DISPOSABLE, COMPACT, INSTANT, TOY }

@@ -12,22 +12,22 @@
     "size": 2.3
   },
   "vignette": {
-    "strength": 0.45,
+    "strength": 0.27,
     "softness": 0.6
   },
   "halation": {
     "strength": 0.15,
     "tint": "#FF4020"
   },
-  "chromaticAberration": 1.4,
-  "edgeSoftness": 0.4,
+  "chromaticAberration": 0.63,
+  "edgeSoftness": 0.2,
   "flash": {
     "hotspotSize": 0.5,
     "falloff": 0.6,
     "kelvin": 5500.0,
     "strength": 0.95,
     "gels": [],
-    "backgroundDrop": 0.8
+    "backgroundDrop": 0.65
   },
   "flareStyle": "WARM",
   "frame": "FULL",

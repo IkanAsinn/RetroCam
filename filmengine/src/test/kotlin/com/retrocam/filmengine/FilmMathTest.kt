@@ -65,6 +65,35 @@ class FilmMathTest {
     }
 
     @Test
+    fun flashHasNoSyntheticHotspotOnlySubtleTint() {
+        val flash = FlashLook(hotspotSize = 1f, falloff = 0f, kelvin = 3200f, strength = 1f, backgroundDrop = 0f)
+        val on = FilmParams(flash = flash)
+        // A bright pixel: centre and corner get the same (uniform) tint, no brightening hotspot at the centre.
+        val centre = FilmMath.apply(0.7f, 0.7f, 0.7f, on, id, 0.5f, 0.5f, 1.33f)
+        val corner = FilmMath.apply(0.7f, 0.7f, 0.7f, on, id, 0.02f, 0.02f, 1.33f)
+        assertEquals(centre.r, corner.r, 1.5f / 255f)
+        assertEquals(centre.b, corner.b, 1.5f / 255f)
+        val off = FilmMath.apply(0.7f, 0.7f, 0.7f, FilmParams(), id, 0.5f, 0.5f, 1.33f)
+        assertTrue(centre.r >= off.r - 1e-3f && centre.r - off.r < 0.08f)
+        assertTrue(centre.b < off.b && off.b - centre.b < 0.2f)   // warm tint, subtle
+        // Neutral flash light (6500 K) leaves colours untouched.
+        val white = FilmParams(flash = FlashLook(0.5f, 0.5f, 6500f, 1f, backgroundDrop = 0f))
+        assertEquals(0.7f, FilmMath.apply(0.7f, 0.7f, 0.7f, white, id, 0.5f, 0.5f, 1.33f).b, 1.5f / 255f)
+    }
+
+    @Test
+    fun uniformsMirrorParams() {
+        val p = FilmParams(exposureEv = 1f, grainAmount = 0.4f, grainSizePx = 1.5f, vignetteStrength = 0.3f)
+        val u = FilmUniforms.compute(p, 4000, 3000, 33)
+        assertEquals(2f, u.getValue("uExposureMul")[0], 1e-6f)
+        assertEquals(3000f / 1080f, u.getValue("uScale")[0], 1e-6f)
+        assertEquals(listOf(4000f, 3000f), u.getValue("uRes").toList())
+        assertEquals(listOf(0.4f, 1.5f), u.getValue("uGrain").toList())
+        assertEquals(0f, u.getValue("uFlash")[2], 0f)
+        assertEquals(0f, u.getValue("uFlashBg")[0], 0f)
+    }
+
+    @Test
     fun shaderSourcesContainBothPathVariants() {
         val preview = FilmShader.fragmentSource(external = true)
         val capture = FilmShader.fragmentSource(external = false)

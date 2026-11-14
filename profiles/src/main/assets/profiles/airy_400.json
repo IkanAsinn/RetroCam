@@ -12,15 +12,15 @@
     "size": 1.2
   },
   "vignette": {
-    "strength": 0.1,
+    "strength": 0.06,
     "softness": 0.8
   },
   "halation": {
     "strength": 0.05,
     "tint": "#FF7A60"
   },
-  "chromaticAberration": 0.3,
-  "edgeSoftness": 0.15,
+  "chromaticAberration": 0.135,
+  "edgeSoftness": 0.075,
   "flash": {
     "hotspotSize": 0.7,
     "falloff": 0.35,

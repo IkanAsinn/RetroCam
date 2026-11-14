@@ -13,3 +13,4 @@ captures/
 __pycache__/
 *.hprof
 .claude/worktrees/
+tools/render/out/
