@@ -31,7 +31,7 @@ class PhotoSaver(context: Context) {
     private val prefs = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     /**
-     * JPEG q92 to Pictures/RetroCam via MediaStore, EXIF DateTimeOriginal + Orientation NORMAL,
+     * JPEG q95 to Pictures/RetroCam via MediaStore, EXIF DateTimeOriginal + Orientation NORMAL,
      * GPS only when location != null. Returns the content Uri.
      */
     suspend fun save(bitmap: Bitmap, takenAtMillis: Long, location: Location?): Uri =
@@ -140,7 +140,7 @@ class PhotoSaver(context: Context) {
     }
 
     companion object {
-        const val JPEG_QUALITY = 92
+        const val JPEG_QUALITY = 95
         const val DIR_NAME = "RetroCam"
         private const val RELATIVE_PATH = "Pictures/RetroCam"
         private const val MIME_JPEG = "image/jpeg"

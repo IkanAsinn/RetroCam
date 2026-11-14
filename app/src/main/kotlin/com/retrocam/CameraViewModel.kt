@@ -76,7 +76,6 @@ private data class PreviewInputs(
     val profile: CameraProfile,
     val toggles: EffectToggles,
     val lens: LensKind,
-    val flashActive: Boolean,
     val highlight: Highlight?,
     val strengthPercent: Int,
 )
@@ -197,11 +196,10 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
             },
             _settings.map { it.toggles }.distinctUntilChanged(),
             controller.state.map { it?.lensKind }.distinctUntilChanged(),
-            combine(_settings.map { it.flash == FlashMode.ON }, hasFlashUnit()) { on, unit -> on && unit }.distinctUntilChanged(),
             combine(highlight, _settings.map { it.strengthFor(it.cameraId) }.distinctUntilChanged()) { h, st -> h to st },
-        ) { profile, toggles, lens, flash, (bright, strength) ->
+        ) { profile, toggles, lens, (bright, strength) ->
             profile?.let {
-                PreviewInputs(it, toggles, lens?.let(LensMapping::toLensKind) ?: LensKind.MAIN, flash, bright, strength)
+                PreviewInputs(it, toggles, lens?.let(LensMapping::toLensKind) ?: LensKind.MAIN, bright, strength)
             }
         }
         viewModelScope.launch(Dispatchers.Default) {
@@ -213,7 +211,7 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
                         profile = input.profile,
                         toggles = input.toggles,
                         lens = input.lens,
-                        flashActive = input.flashActive,
+                        flashActive = false, // a real camera never shows its flash in the viewfinder
                         seed = PREVIEW_SEED,
                         brightHighlight = input.highlight != null,
                         highlightX = input.highlight?.x,
