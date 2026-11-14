@@ -59,7 +59,7 @@ fun BottomBar(
     counting: Boolean,
     canSwitch: Boolean,
     rotation: () -> Float,
-    onThumbnail: (Uri) -> Unit,
+    onThumbnail: () -> Unit,
     onShutter: () -> Unit,
     onSwitch: () -> Unit,
     modifier: Modifier = Modifier,
@@ -115,7 +115,7 @@ private fun ShutterButton(counting: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun Thumbnail(uri: Uri?, saving: Boolean, rotation: () -> Float, onOpen: (Uri) -> Unit) {
+private fun Thumbnail(uri: Uri?, saving: Boolean, rotation: () -> Float, onOpen: () -> Unit) {
     val context = LocalContext.current
     val bitmap by produceState<ImageBitmap?>(null, uri) {
         value = if (uri == null) null else withContext(Dispatchers.IO) { loadThumb(context, uri) }
@@ -129,7 +129,7 @@ private fun Thumbnail(uri: Uri?, saving: Boolean, rotation: () -> Float, onOpen:
                 .uiRotate(rotation)
                 .clip(shape)
                 .border(2.dp, RetroColors.Cream.copy(alpha = 0.8f), shape)
-                .clickable(enabled = uri != null, role = Role.Button) { uri?.let(onOpen) }
+                .clickable(role = Role.Button, onClick = onOpen)
                 .semantics { contentDescription = label },
             contentAlignment = Alignment.Center,
         ) {

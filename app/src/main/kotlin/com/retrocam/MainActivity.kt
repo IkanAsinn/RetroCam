@@ -24,6 +24,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import com.retrocam.gallery.GalleryViewModel
 import com.retrocam.logic.CameraPermissionUi
 import com.retrocam.logic.PermissionLogic
 import com.retrocam.ui.CameraScreen
@@ -34,6 +35,7 @@ import com.retrocam.ui.theme.RetroCamTheme
 class MainActivity : ComponentActivity() {
     private val container: AppContainer get() = (application as RetroCamApp).container
     private val viewModel: CameraViewModel by viewModels { CameraViewModel.factory(container) }
+    private val galleryViewModel: GalleryViewModel by viewModels { GalleryViewModel.factory(container) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -91,6 +93,8 @@ class MainActivity : ComponentActivity() {
         if (mode == CameraPermissionUi.GRANTED) {
             CameraScreen(
                 viewModel = viewModel,
+                galleryViewModel = galleryViewModel,
+                photoLibrary = container.photoLibrary,
                 crashLogger = container.crashLogger,
                 hasLocationPermission = { container.locationProvider.hasPermission() },
             )

@@ -26,6 +26,23 @@ fun openPhoto(context: Context, uri: Uri): Boolean {
     }
 }
 
+/** Shares one photo (content uri) through the system chooser. Returns false when it could not start. */
+fun sharePhoto(context: Context, uri: Uri): Boolean {
+    val send = Intent(Intent.ACTION_SEND)
+        .setType("image/jpeg")
+        .putExtra(Intent.EXTRA_STREAM, uri)
+        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        .also { it.clipData = ClipData.newRawUri("", uri) }
+    return try {
+        context.startActivity(Intent.createChooser(send, context.getString(R.string.gallery_share)))
+        true
+    } catch (_: ActivityNotFoundException) {
+        false
+    } catch (_: SecurityException) {
+        false
+    }
+}
+
 /** Shares filesDir/crash/last_crash.txt through FileProvider. Returns a string res on failure, null on success. */
 fun shareCrashLog(context: Context, crashLogger: CrashLogger): Int? {
     val file = crashLogger.lastCrashFile() ?: return R.string.msg_no_crash_log

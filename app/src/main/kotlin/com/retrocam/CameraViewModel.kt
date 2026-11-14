@@ -76,7 +76,6 @@ private data class PreviewInputs(
     val profile: CameraProfile,
     val toggles: EffectToggles,
     val lens: LensKind,
-    val flashActive: Boolean,
     val highlight: Highlight?,
     val strengthPercent: Int,
 )
@@ -120,10 +119,27 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
         observeOrientation()
         observeCameraSettings()
         observePreviewParams()
-        viewModelScope.launch {
-            val last = safely { container.photoSaver.lastSaved() }
-            if (last != null) _transient.update { it.copy(thumbnail = last) }
+        // Thumbnail = newest RetroCam photo; reloads after every capture and every delete in the gallery.
+        viewModelScope.launch { container.photoLibrary.changes.collect { refreshThumbnail() } }
+    }
+
+    private suspend fun refreshThumbnail() {
+        val newest = try {
+            Result.success(container.photoLibrary.newest())
+        } catch (e: CancellationException) {
+            throw e
+        } catch (t: Throwable) {
+            Result.failure(t)
         }
+        val uri = newest.getOrElse { safely { container.photoSaver.lastSaved() } }
+        _transient.update { it.copy(thumbnail = uri) }
+    }
+
+    /** The gallery is opening: release the camera (it rebinds when the camera screen returns). */
+    fun releaseCamera() {
+        cancelTimer()
+        bound.value = false
+        safely { controller.unbind() }
     }
 
     // ---------------------------------------------------------------- startup
@@ -197,11 +213,10 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
             },
             _settings.map { it.toggles }.distinctUntilChanged(),
             controller.state.map { it?.lensKind }.distinctUntilChanged(),
-            combine(_settings.map { it.flash == FlashMode.ON }, hasFlashUnit()) { on, unit -> on && unit }.distinctUntilChanged(),
             combine(highlight, _settings.map { it.strengthFor(it.cameraId) }.distinctUntilChanged()) { h, st -> h to st },
-        ) { profile, toggles, lens, flash, (bright, strength) ->
+        ) { profile, toggles, lens, (bright, strength) ->
             profile?.let {
-                PreviewInputs(it, toggles, lens?.let(LensMapping::toLensKind) ?: LensKind.MAIN, flash, bright, strength)
+                PreviewInputs(it, toggles, lens?.let(LensMapping::toLensKind) ?: LensKind.MAIN, bright, strength)
             }
         }
         viewModelScope.launch(Dispatchers.Default) {
@@ -213,7 +228,7 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
                         profile = input.profile,
                         toggles = input.toggles,
                         lens = input.lens,
-                        flashActive = input.flashActive,
+                        flashActive = false, // a real camera never shows its flash in the viewfinder
                         seed = PREVIEW_SEED,
                         brightHighlight = input.highlight != null,
                         highlightX = input.highlight?.x,
@@ -368,6 +383,7 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
                     val location = if (settings.exifLocation) withContext(Dispatchers.IO) { container.locationProvider.lastKnown() } else null
                     val uri = pipeline.process(ShotRequest(frame, profile, settings, bright, location))
                     _transient.update { it.copy(thumbnail = uri) }
+                    container.photoLibrary.notifyChanged()
                 } catch (e: CancellationException) {
                     throw e
                 } catch (t: Throwable) {

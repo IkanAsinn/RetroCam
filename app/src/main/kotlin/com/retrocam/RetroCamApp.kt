@@ -7,6 +7,7 @@ import com.retrocam.camera.RetroCameraController
 import com.retrocam.capture.CapturePipeline
 import com.retrocam.capture.LocationProvider
 import com.retrocam.capture.ShutterFeedback
+import com.retrocam.data.PhotoLibrary
 import com.retrocam.data.SettingsRepository
 import com.retrocam.filmengine.OffscreenFilmRenderer
 import com.retrocam.logic.ReleasableHolder
@@ -25,6 +26,7 @@ class AppContainer(private val app: Application) {
     val profileRepository by lazy { ProfileRepository(app) }
     val controller by lazy { RetroCameraController(app) }
     val photoSaver by lazy { PhotoSaver(app) }
+    val photoLibrary by lazy { PhotoLibrary(app) }
     val orientationWatcher by lazy { OrientationWatcher(app) }
     val locationProvider by lazy { LocationProvider(app) }
     val shutterFeedback by lazy { ShutterFeedback(app) }

@@ -273,7 +273,7 @@ class RetroCameraController(context: Context) {
         newPreview.setSurfaceProvider(mainExecutor) { request -> _surfaceRequest.value = request }
 
         val newCapture = ImageCapture.Builder()
-            .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+            .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
             .setFlashMode(flashMode.toCameraX())
             .setTargetRotation(targetRotation)
             .setResolutionSelector(

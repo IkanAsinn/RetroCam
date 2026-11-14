@@ -1,6 +1,10 @@
 package com.retrocam.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,7 +12,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -105,11 +108,11 @@ fun TopBar(
         TimerSetting.TEN -> stringResource(R.string.state_timer_10)
     }
 
-    Row(
-        modifier = modifier.fillMaxWidth().padding(horizontal = 4.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        // 8 equal slots must stay at least a usable touch width; narrower screens scroll instead of dropping toggles.
+        val compact = maxWidth / TOGGLE_COUNT < MIN_SLOT_WIDTH
+        val rowModifier = Modifier.fillMaxWidth().let { if (compact) it.horizontalScroll(rememberScrollState()) else it }
+        Row(modifier = rowModifier, verticalAlignment = Alignment.CenterVertically) {
         TopToggle(
             icon = when (s.flash) {
                 FlashMode.OFF -> Icons.Outlined.FlashOff
@@ -125,6 +128,7 @@ fun TopBar(
             active = hasFlash && s.flash != FlashMode.OFF,
             enabled = hasFlash,
             rotation = rotation,
+            compact = compact,
             onClick = actions.onFlash,
         )
         TopToggle(
@@ -138,6 +142,7 @@ fun TopBar(
             },
             active = s.grain != GrainLevel.OFF,
             rotation = rotation,
+            compact = compact,
             onClick = actions.onGrain,
         )
         TopToggle(
@@ -150,6 +155,7 @@ fun TopBar(
             },
             active = s.flare != FlareMode.OFF,
             rotation = rotation,
+            compact = compact,
             onClick = actions.onFlare,
         )
         TopToggle(
@@ -162,6 +168,7 @@ fun TopBar(
             },
             active = s.leaks != LeakMode.OFF,
             rotation = rotation,
+            compact = compact,
             onClick = actions.onLeaks,
         )
         TopToggle(
@@ -170,6 +177,7 @@ fun TopBar(
             badge = if (s.dateStamp) stringResource(R.string.badge_on) else null,
             active = s.dateStamp,
             rotation = rotation,
+            compact = compact,
             onClick = actions.onDate,
         )
         TopToggle(
@@ -182,6 +190,7 @@ fun TopBar(
             },
             active = s.timer != TimerSetting.OFF,
             rotation = rotation,
+            compact = compact,
             onClick = actions.onTimer,
         )
         val strength = s.strengthFor(s.cameraId)
@@ -191,6 +200,7 @@ fun TopBar(
             badge = if (strength != 100) stringResource(R.string.strength_value, strength) else null,
             active = strength != 100 || strengthOpen,
             rotation = rotation,
+            compact = compact,
             onClick = actions.onStrength,
         )
         TopToggle(
@@ -199,8 +209,10 @@ fun TopBar(
             badge = null,
             active = false,
             rotation = rotation,
+            compact = compact,
             onClick = actions.onSettings,
         )
+        }
     }
 }
 
@@ -212,41 +224,50 @@ private fun RowScope.TopToggle(
     badge: String?,
     active: Boolean,
     rotation: () -> Float,
+    compact: Boolean,
     onClick: () -> Unit,
     enabled: Boolean = true,
 ) {
     val tint = if (active) RetroColors.Orange else RetroColors.Cream
-    TooltipBox(
-        modifier = Modifier.weight(1f),
-        positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
-        tooltip = { PlainTooltip { Text(description) } },
-        state = rememberTooltipState(),
+    // The Row's direct child must carry the weight: TooltipBox does not forward its modifier's parent data.
+    Box(
+        modifier = if (compact) Modifier.width(MIN_SLOT_WIDTH) else Modifier.weight(1f),
+        contentAlignment = Alignment.Center,
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp) // touch target height; width is shared evenly (8 toggles fit a 360dp screen)
-                .clip(CircleShape)
-                .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-                .semantics { contentDescription = description; role = Role.Button }
-                .alpha(if (enabled) 1f else 0.35f),
-            contentAlignment = Alignment.Center,
+        TooltipBox(
+            positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+            tooltip = { PlainTooltip { Text(description) } },
+            state = rememberTooltipState(),
         ) {
-            Column(
-                modifier = Modifier.uiRotate(rotation),
-                horizontalAlignment = Alignment.CenterHorizontally,
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp) // touch target height; width is the slot width
+                    .clip(CircleShape)
+                    .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+                    .semantics { contentDescription = description; role = Role.Button }
+                    .alpha(if (enabled) 1f else 0.35f),
+                contentAlignment = Alignment.Center,
             ) {
-                Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(24.dp))
-                Text(
-                    text = badge ?: "",
-                    color = tint,
-                    fontSize = 9.sp,
-                    lineHeight = 10.sp,
-                    maxLines = 1,
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.labelSmall,
-                )
+                Column(
+                    modifier = Modifier.uiRotate(rotation),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(24.dp))
+                    Text(
+                        text = badge ?: "",
+                        color = tint,
+                        fontSize = 9.sp,
+                        lineHeight = 10.sp,
+                        maxLines = 1,
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                }
             }
         }
     }
 }
+
+private const val TOGGLE_COUNT = 8
+private val MIN_SLOT_WIDTH = 44.dp
