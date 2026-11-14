@@ -24,6 +24,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -46,6 +47,9 @@ import com.retrocam.CrashLogger
 import com.retrocam.UiEvent
 import com.retrocam.R
 import com.retrocam.camera.Facing
+import com.retrocam.data.PhotoLibrary
+import com.retrocam.gallery.GalleryScreen
+import com.retrocam.gallery.GalleryViewModel
 import com.retrocam.filmengine.DateStampFormat
 import com.retrocam.filmengine.DateStampRenderer
 import com.retrocam.logic.FrameSelection
@@ -58,7 +62,13 @@ import kotlinx.coroutines.withContext
 import java.time.LocalDate
 
 @Composable
-fun CameraScreen(viewModel: CameraViewModel, crashLogger: CrashLogger, hasLocationPermission: () -> Boolean) {
+fun CameraScreen(
+    viewModel: CameraViewModel,
+    galleryViewModel: GalleryViewModel,
+    photoLibrary: PhotoLibrary,
+    crashLogger: CrashLogger,
+    hasLocationPermission: () -> Boolean,
+) {
     val context = LocalContext.current
     val resources = LocalResources.current
     val owner = LocalLifecycleOwner.current
@@ -72,6 +82,7 @@ fun CameraScreen(viewModel: CameraViewModel, crashLogger: CrashLogger, hasLocati
     val snackbar = remember { SnackbarHostState() }
     val flashAlpha = remember { Animatable(0f) }
     var showSettings by remember { mutableStateOf(false) }
+    var showGallery by rememberSaveable { mutableStateOf(false) }
 
     // Strength row: an overlay on the bottom edge of the viewfinder area (so the viewfinder never resizes).
     // Hides on camera change and after 4 s without interaction; [strengthTouch] restarts that timer.
@@ -79,8 +90,13 @@ fun CameraScreen(viewModel: CameraViewModel, crashLogger: CrashLogger, hasLocati
     var strengthTouch by remember { mutableIntStateOf(0) }
 
     // Camera follows the lifecycle: (re)bind every time the screen starts; CameraX releases it on stop.
-    LaunchedEffect(owner) {
-        owner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { viewModel.bindCamera(owner) }
+    // While the gallery is open the camera is released; closing it re-runs this effect and binds again.
+    LaunchedEffect(owner, showGallery) {
+        if (showGallery) {
+            viewModel.releaseCamera()
+        } else {
+            owner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { viewModel.bindCamera(owner) }
+        }
     }
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewModel.onScreenStopped() }
 
@@ -150,7 +166,9 @@ fun CameraScreen(viewModel: CameraViewModel, crashLogger: CrashLogger, hasLocati
     }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        Column(Modifier.fillMaxSize()) {
+        if (showGallery) {
+            GalleryScreen(galleryViewModel, photoLibrary, onClose = { showGallery = false })
+        } else Column(Modifier.fillMaxSize()) {
             TopBar(
                 state = state,
                 rotation = rotation,
@@ -219,9 +237,7 @@ fun CameraScreen(viewModel: CameraViewModel, crashLogger: CrashLogger, hasLocati
                 counting = state.countdown != null,
                 canSwitch = camera != null && (if (camera.facing == Facing.BACK) camera.hasFront else camera.hasBack),
                 rotation = rotation,
-                onThumbnail = { uri ->
-                    if (!openPhoto(context, uri)) viewModel.message(R.string.msg_no_gallery)
-                },
+                onThumbnail = { showGallery = true },
                 onShutter = viewModel::onShutter,
                 onSwitch = viewModel::switchFacing,
                 modifier = Modifier.navigationBarsPadding(),

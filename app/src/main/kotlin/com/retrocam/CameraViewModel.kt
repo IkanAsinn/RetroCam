@@ -119,10 +119,27 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
         observeOrientation()
         observeCameraSettings()
         observePreviewParams()
-        viewModelScope.launch {
-            val last = safely { container.photoSaver.lastSaved() }
-            if (last != null) _transient.update { it.copy(thumbnail = last) }
+        // Thumbnail = newest RetroCam photo; reloads after every capture and every delete in the gallery.
+        viewModelScope.launch { container.photoLibrary.changes.collect { refreshThumbnail() } }
+    }
+
+    private suspend fun refreshThumbnail() {
+        val newest = try {
+            Result.success(container.photoLibrary.newest())
+        } catch (e: CancellationException) {
+            throw e
+        } catch (t: Throwable) {
+            Result.failure(t)
         }
+        val uri = newest.getOrElse { safely { container.photoSaver.lastSaved() } }
+        _transient.update { it.copy(thumbnail = uri) }
+    }
+
+    /** The gallery is opening: release the camera (it rebinds when the camera screen returns). */
+    fun releaseCamera() {
+        cancelTimer()
+        bound.value = false
+        safely { controller.unbind() }
     }
 
     // ---------------------------------------------------------------- startup
@@ -366,6 +383,7 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
                     val location = if (settings.exifLocation) withContext(Dispatchers.IO) { container.locationProvider.lastKnown() } else null
                     val uri = pipeline.process(ShotRequest(frame, profile, settings, bright, location))
                     _transient.update { it.copy(thumbnail = uri) }
+                    container.photoLibrary.notifyChanged()
                 } catch (e: CancellationException) {
                     throw e
                 } catch (t: Throwable) {
