@@ -30,11 +30,13 @@ import androidx.compose.ui.unit.dp
 import com.retrocam.R
 import com.retrocam.data.Settings
 import com.retrocam.filmengine.DateStampFormat
+import com.retrocam.filmengine.PhotoRatio
 import com.retrocam.ui.theme.RetroColors
 
 class SettingsActions(
     val onShutterSound: (Boolean) -> Unit,
     val onDateFormat: (DateStampFormat) -> Unit,
+    val onRatio: (PhotoRatio) -> Unit,
     val onFrameOption: (Boolean) -> Unit,
     val onExifLocation: (Boolean) -> Unit,
     val onZoomUnlocked: (Boolean) -> Unit,
@@ -82,6 +84,27 @@ fun SettingsSheet(settings: Settings, versionName: String, actions: SettingsActi
                             shape = SegmentedButtonDefaults.itemShape(i, formats.size),
                             modifier = Modifier.heightIn(min = 48.dp),
                         ) { Text(stringResource(label)) }
+                    }
+                }
+            }
+
+            Column(Modifier.padding(vertical = 12.dp)) {
+                Text(stringResource(R.string.settings_ratio), style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    stringResource(R.string.settings_ratio_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = RetroColors.Cream.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+                val ratios = PhotoRatio.entries
+                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                    ratios.forEachIndexed { i, ratio ->
+                        SegmentedButton(
+                            selected = settings.ratio == ratio,
+                            onClick = { actions.onRatio(ratio) },
+                            shape = SegmentedButtonDefaults.itemShape(i, ratios.size),
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        ) { Text(stringResource(ratio.labelRes())) }
                     }
                 }
             }

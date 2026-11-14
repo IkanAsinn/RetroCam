@@ -1,10 +1,13 @@
 package com.retrocam.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,9 +27,35 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.retrocam.R
 import com.retrocam.camera.ZoomStop
+import com.retrocam.filmengine.FrameFormat
+import com.retrocam.filmengine.PhotoRatio
 import com.retrocam.ui.theme.RetroColors
 
-/** Lens/zoom chips above the shutter. Hidden (but space kept) when the camera reports fewer than two stops. */
+/** What the ratio chip shows: [label] ("4:3", "1:1", "Instax"...) and whether the camera's fixed format makes it read-only. */
+data class RatioChip(val label: String, val locked: Boolean)
+
+@StringRes
+fun PhotoRatio.labelRes(): Int = when (this) {
+    PhotoRatio.R4_3 -> R.string.ratio_4_3
+    PhotoRatio.R3_2 -> R.string.ratio_3_2
+    PhotoRatio.R16_9 -> R.string.ratio_16_9
+    PhotoRatio.R1_1 -> R.string.ratio_1_1
+}
+
+/** Label of the dimmed ratio chip for a fixed-format camera (a FrameSelection.choose result other than FULL). */
+@StringRes
+fun FrameFormat.fixedLabelRes(): Int = when (this) {
+    FrameFormat.SQUARE -> R.string.ratio_1_1
+    FrameFormat.INSTANT_SQUARE, FrameFormat.INSTANT_MINI -> R.string.ratio_instax
+    FrameFormat.HALF_FRAME -> R.string.ratio_half
+    FrameFormat.FULL -> R.string.ratio_4_3
+}
+
+/**
+ * Photo-ratio chip followed by the lens/zoom chips above the shutter. The lens chips are hidden (row height kept)
+ * when the camera reports fewer than two stops; the ratio chip always shows. Tapping the chip calls [onRatio]
+ * (the caller cycles the ratio or explains that the format is fixed).
+ */
 @Composable
 fun ZoomChips(
     stops: List<ZoomStop>,
@@ -34,12 +63,36 @@ fun ZoomChips(
     rotation: () -> Float,
     onSelect: (ZoomStop) -> Unit,
     modifier: Modifier = Modifier,
+    ratio: RatioChip? = null,
+    onRatio: () -> Unit = {},
 ) {
     Row(
         modifier = modifier.fillMaxWidth().height(48.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (ratio != null) {
+            val description = stringResource(if (ratio.locked) R.string.cd_ratio_fixed else R.string.cd_ratio, ratio.label)
+            Box(
+                modifier = Modifier
+                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                    .clip(CircleShape)
+                    .clickable(role = Role.Button, onClick = onRatio)
+                    .semantics { contentDescription = description },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = ratio.label,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = RetroColors.Cream.copy(alpha = if (ratio.locked) 0.45f else 1f),
+                    modifier = Modifier
+                        .uiRotate(rotation)
+                        .background(Color.White.copy(alpha = if (ratio.locked) 0.06f else 0.12f), CircleShape)
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                )
+            }
+            if (stops.size >= 2) Spacer(Modifier.width(4.dp))
+        }
         if (stops.size < 2) return@Row
         stops.forEachIndexed { index, stop ->
             val selected = index == selectedIndex

@@ -3,6 +3,7 @@ package com.retrocam.data
 import com.retrocam.camera.Facing
 import com.retrocam.camera.FlashMode
 import com.retrocam.filmengine.DateStampFormat
+import com.retrocam.filmengine.PhotoRatio
 import com.retrocam.logic.StrengthMath
 import com.retrocam.profiles.EffectToggles
 import com.retrocam.profiles.FlareMode
@@ -27,6 +28,7 @@ data class Settings(
     val zoomUnlocked: Boolean = false,
     val facing: Facing = Facing.BACK,
     val frameOption: Boolean = true,           // white border for instant types
+    val ratio: PhotoRatio = PhotoRatio.R4_3,   // applies to FULL-format cameras only; remembered for fixed-format ones
     val strengthPercent: Map<String, Int> = emptyMap(), // profile id -> filter strength percent; missing = 100
 ) {
     val toggles: EffectToggles get() = EffectToggles(grain, flare, leaks)

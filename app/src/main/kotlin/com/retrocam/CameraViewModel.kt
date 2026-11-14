@@ -17,6 +17,7 @@ import com.retrocam.data.Settings
 import com.retrocam.data.TimerSetting
 import com.retrocam.data.cycleNext
 import com.retrocam.filmengine.DateStampFormat
+import com.retrocam.filmengine.PhotoRatio
 import com.retrocam.filmengine.FilmCameraEffect
 import com.retrocam.filmengine.Highlight
 import com.retrocam.logic.Countdown
@@ -275,6 +276,8 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
     fun cycleTimer() = update { it.copy(timer = it.timer.cycleNext()) }
     fun setShutterSound(on: Boolean) = update { it.copy(shutterSound = on) }
     fun setDateFormat(format: DateStampFormat) = update { it.copy(dateFormat = format) }
+    fun cycleRatio() = update { it.copy(ratio = it.ratio.cycleNext()) }
+    fun setRatio(ratio: PhotoRatio) = update { it.copy(ratio = ratio) }
     fun setFrameOption(on: Boolean) = update { it.copy(frameOption = on) }
     fun setExifLocation(on: Boolean) = update { it.copy(exifLocation = on) }
     fun setZoomUnlocked(on: Boolean) = update { it.copy(zoomUnlocked = on) }

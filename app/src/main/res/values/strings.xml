@@ -95,6 +95,17 @@
     <string name="msg_location_denied">Location permission was not granted. Photos are saved without location.</string>
     <string name="msg_no_crash_log">No crash log recorded.</string>
     <string name="msg_no_gallery">No app found to open the photo.</string>
+    <string name="msg_ratio_fixed">This camera shoots a fixed format</string>
+    <string name="ratio_4_3">4:3</string>
+    <string name="ratio_3_2">3:2</string>
+    <string name="ratio_16_9">16:9</string>
+    <string name="ratio_1_1">1:1</string>
+    <string name="ratio_instax">Instax</string>
+    <string name="ratio_half">Half</string>
+    <string name="cd_ratio">Photo ratio %1$s. Tap to change.</string>
+    <string name="cd_ratio_fixed">Photo ratio %1$s. This camera shoots a fixed format.</string>
+    <string name="settings_ratio">Photo ratio</string>
+    <string name="settings_ratio_desc">Crop for normal cameras. Square, instant and Half Frame cameras keep their own format.</string>
     <string name="zoom_row_label">Zoom levels</string>
     <string name="msg_share_failed">Could not share the crash log.</string>
 
