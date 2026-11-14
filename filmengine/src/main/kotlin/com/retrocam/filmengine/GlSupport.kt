@@ -10,8 +10,6 @@ import android.opengl.GLES11Ext
 import android.opengl.GLES30
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import kotlin.math.min
-import kotlin.math.pow
 
 /** Minimal EGL 1.4 wrapper: one ES 3.x context, window and pbuffer surfaces. GL-thread only. */
 internal class EglCore {
@@ -220,54 +218,16 @@ internal class FilmProgram(external: Boolean) {
         GLES30.glUniform4fv(loc("uQuadRect"), 1, quad, 0)
         GLES30.glUniform1f(loc("uTopDown"), if (topDown) 1f else 0f)
         GLES30.glUniformMatrix4fv(loc("uTexMat"), 1, false, texMatrix, 0)
-        GLES30.glUniform2f(loc("uRes"), outW.toFloat(), outH.toFloat())
-        GLES30.glUniform1f(loc("uScale"), min(outW, outH).toFloat() / FilmParams.REFERENCE_SHORT_EDGE)
         GLES30.glUniform1i(loc("uSeed"), seed)
 
-        GLES30.glUniform1f(loc("uExposureMul"), 2f.pow(p.exposureEv))
-        GLES30.glUniform1f(loc("uBlackLift"), p.blackLift)
-        GLES30.glUniform1f(loc("uContrast"), p.contrast)
-        GLES30.glUniform1f(loc("uSaturation"), p.saturation)
-        GLES30.glUniform3f(loc("uColorShift"), p.colorShift.r, p.colorShift.g, p.colorShift.b)
-        GLES30.glUniform1f(loc("uLutSize"), lutSize.toFloat())
-
-        GLES30.glUniform1f(loc("uCaPx"), p.chromaticAberrationPx)
-        GLES30.glUniform1f(loc("uEdgeSoft"), p.edgeSoftness)
-
-        GLES30.glUniform1f(loc("uFlashBg"), p.flash?.backgroundDrop?.coerceIn(0f, 1f) ?: 0f)
-        val f = p.flash
-        if (f != null && f.strength > 0f) {
-            GLES30.glUniform3f(loc("uFlash"), f.hotspotSize, f.falloff, f.strength)
-            val t = FilmMath.flashTint(f)
-            GLES30.glUniform3f(loc("uFlashTint"), t[0], t[1], t[2])
-        } else {
-            GLES30.glUniform3f(loc("uFlash"), 0f, 0f, 0f)
-            GLES30.glUniform3f(loc("uFlashTint"), 1f, 1f, 1f)
+        for ((name, v) in FilmUniforms.compute(p, outW, outH, lutSize)) {
+            when (v.size) {
+                1 -> GLES30.glUniform1f(loc(name), v[0])
+                2 -> GLES30.glUniform2f(loc(name), v[0], v[1])
+                3 -> GLES30.glUniform3f(loc(name), v[0], v[1], v[2])
+                else -> GLES30.glUniform4f(loc(name), v[0], v[1], v[2], v[3])
+            }
         }
-
-        GLES30.glUniform1f(loc("uHalStrength"), p.halationStrength)
-        GLES30.glUniform3f(loc("uHalTint"), p.halationTint.r, p.halationTint.g, p.halationTint.b)
-
-        val fl = p.flare
-        if (fl != null && fl.strength > 0f) {
-            val style = if (fl.style == FlareStyle.WARM) 1f else 2f
-            GLES30.glUniform4f(loc("uFlare"), style, fl.strength, fl.centerX, fl.centerY)
-        } else {
-            GLES30.glUniform4f(loc("uFlare"), 0f, 0f, 0.5f, 0.5f)
-        }
-
-        val lk = p.leak
-        if (lk != null && lk.strength > 0f) {
-            GLES30.glUniform4f(loc("uLeak"), lk.strength, lk.angle, lk.offset, 0f)
-            GLES30.glUniform3f(loc("uLeakTint"), lk.tint.r, lk.tint.g, lk.tint.b)
-        } else {
-            GLES30.glUniform4f(loc("uLeak"), 0f, 0f, 0f, 0f)
-            GLES30.glUniform3f(loc("uLeakTint"), 0f, 0f, 0f)
-        }
-
-        GLES30.glUniform2f(loc("uVig"), p.vignetteStrength, p.vignetteSoftness)
-        GLES30.glUniform2f(loc("uGrain"), p.grainAmount, p.grainSizePx)
-        GLES30.glUniform1f(loc("uStrength"), FilmMath.clampStrength(p.strength))
     }
 
     fun release() {

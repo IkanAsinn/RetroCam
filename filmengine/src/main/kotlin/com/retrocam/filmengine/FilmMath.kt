@@ -7,7 +7,7 @@ import kotlin.math.sqrt
 
 /**
  * Pure-Kotlin CPU reference of the COLOUR part of the shader (exposure, contrast, black lift,
- * LUT, saturation, colour shift, vignette, filter strength). No grain, blur, CA, flash, halation, flare or leak.
+ * LUT, saturation, colour shift, flash background drop and tint, vignette, filter strength). No grain, blur, CA, halation, flare or leak.
  * Used by unit tests and by the golden-image instrumented test. Keep in lock-step with
  * [FilmShader].
  */
@@ -21,6 +21,16 @@ object FilmMath {
     const val BG_LUMA_LO = 0.15f
     const val BG_LUMA_HI = 0.45f
     const val BG_RADIAL_MIN = 0.6f
+    // Flash colour tint: the tint is applied uniformly, blended in by FLASH_TINT_MIX * flash strength.
+    const val FLASH_TINT_MIX = 0.35f
+    // Halation: only pixels brighter than HAL_LUMA_LO glow.
+    const val HAL_LUMA_LO = 0.85f
+    const val HAL_GAIN = 1.2f
+    // Grain tuning (shader only; documented here so all look constants live in one place).
+    const val GRAIN_SIZE_MUL = 0.8f
+    const val GRAIN_NOISE_GAIN = 1.7f
+    const val GRAIN_CHROMA = 0.12f
+    const val GRAIN_AMP = 0.12f
 
     private fun clamp01(x: Float) = min(1f, max(0f, x))
 
@@ -88,7 +98,15 @@ object FilmMath {
     fun apply(r: Float, g: Float, b: Float, params: FilmParams, lut: Lut, u: Float, v: Float, aspect: Float): Rgb {
         val rad = radius(u, v, aspect)
         val keep = backgroundKeep(params.flash, luma(r, g, b), rad)
-        val c = grade(r * keep, g * keep, b * keep, params, lut)
+        val c0 = grade(r * keep, g * keep, b * keep, params, lut)
+        val c = if (params.flash != null && params.flash.strength > 0f) {
+            val t = flashTint(params.flash)
+            Rgb(
+                clamp01(c0.r * flashTintMul(params.flash, t, 0)),
+                clamp01(c0.g * flashTintMul(params.flash, t, 1)),
+                clamp01(c0.b * flashTintMul(params.flash, t, 2)),
+            )
+        } else c0
         val m = vignette(params, rad)
         val fr = clamp01(c.r * m)
         val fg = clamp01(c.g * m)
@@ -97,6 +115,12 @@ object FilmMath {
         if (k >= 1f) return Rgb(fr, fg, fb)
         // mix(input, film, strength), exactly the shader's final step
         return Rgb(r + (fr - r) * k, g + (fg - g) * k, b + (fb - b) * k)
+    }
+
+    /** Per-channel multiplier of the flash colour-temperature tint (1 = untouched); [tint] from [flashTint]. */
+    fun flashTintMul(flash: FlashLook?, tint: FloatArray, channel: Int): Float {
+        if (flash == null || flash.strength <= 0f) return 1f
+        return 1f + (tint[channel] - 1f) * FLASH_TINT_MIX * clamp01(flash.strength)
     }
 
     /** Flash light colour relative to 6500 K (white), times the optional gel. */

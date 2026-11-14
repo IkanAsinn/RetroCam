@@ -42,7 +42,7 @@ data class FlashSpec(
     val kelvin: Float,
     val strength: Float,
     val gels: List<String> = emptyList(),
-    val backgroundDrop: Float = 0.6f,     // optional in JSON: dark far background falls toward black under flash
+    val backgroundDrop: Float = 0.5f,     // optional in JSON: dark far background falls toward black under flash
 )
 
 @Serializable

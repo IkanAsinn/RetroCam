@@ -199,14 +199,14 @@ void main() {
     if (uCaPx > 0.0) {
         vec2 dpx = (uv - 0.5) * uRes;
         vec2 dir = dpx / max(length(dpx), 1e-4);
-        vec2 off = dir * (uCaPx * uScale * r) * pxToUv;
+        vec2 off = dir * (uCaPx * uScale * r * r) * pxToUv;
         col = vec3(fetch(uv + off).r, fetch(uv).g, fetch(uv - off).b);
     } else {
         col = fetch(uv);
     }
-    float bw = uEdgeSoft * smoothstep(0.3, 1.0, r);
+    float bw = uEdgeSoft * smoothstep(0.6, 1.1, r);
     if (bw > 0.002) {
-        vec2 rad = vec2(8.0 * uScale * bw) * pxToUv;
+        vec2 rad = vec2(5.0 * uScale * bw) * pxToUv;
         vec3 sum = col;
         for (int i = 0; i < 6; i++) {
             float a = float(i) * 1.0471976;
@@ -242,16 +242,10 @@ void main() {
     c = clamp(mix(vec3(l), c, uSaturation), 0.0, 1.0);
     c = clamp(c + uColorShift, 0.0, 1.0);
 
-    // 7. Flash look
+    // 7. Flash look: the phone's real flash already lit the frame, so there is NO synthetic hotspot.
+    // Only a subtle, uniform colour-temperature tint (uFlash.z = strength) remains.
     if (uFlash.z > 0.0) {
-        float sigma = mix(0.2, 0.9, uFlash.x);
-        float q = r / sigma;
-        float h = pow(1.0 / (1.0 + q * q), 1.0 + 2.0 * uFlash.y);
-        float s = uFlash.z;
-        c = c * (1.0 + s * 1.2 * h);                 // brighten near the subject
-        c = c + (1.0 - c) * (0.35 * h * s);          // wash out / fill shadows
-        c = c * mix(vec3(1.0), uFlashTint, clamp(h * s, 0.0, 1.0));
-        c = clamp(c, 0.0, 1.0);
+        c = clamp(c * mix(vec3(1.0), uFlashTint, ${FilmMath.FLASH_TINT_MIX} * uFlash.z), 0.0, 1.0);
     }
 
     // 8. Halation: tinted glow from bright areas
@@ -266,9 +260,9 @@ void main() {
             vec2 rd = vec2(ca * d.x - sa * d.y, sa * d.x + ca * d.y);
             float rr = radius * (((i & 1) == 0) ? 1.0 : 0.55);
             vec3 s = fetch(uv + rd * rr * pxToUv) * uExposureMul;
-            acc += smoothstep(0.72, 1.0, dot(s, LUMA));
+            acc += smoothstep(${FilmMath.HAL_LUMA_LO}, 1.0, dot(s, LUMA));
         }
-        vec3 glow = uHalTint * (acc / float(HAL_TAPS)) * uHalStrength * 1.6;
+        vec3 glow = uHalTint * (acc / float(HAL_TAPS)) * uHalStrength * ${FilmMath.HAL_GAIN};
         c = 1.0 - (1.0 - c) * (1.0 - clamp(glow, 0.0, 1.0));
     }
 
@@ -290,16 +284,26 @@ void main() {
         c *= 1.0 - uVig.x * v;
     }
 
-    // 12. Grain: procedural, luminance dependent, scaled to the output size
+    // 12. Grain: procedural, smooth (bilinear value noise), luminance dependent (mid-tones strongest,
+    // weak in deep shadows and highlights), mostly monochrome, scaled to the output size.
     if (uGrain.x > 0.0) {
-        float size = max(uGrain.y * uScale, 1.0);
-        vec2 cell = floor(pix / size);
+        float size = max(uGrain.y * uScale * ${FilmMath.GRAIN_SIZE_MUL}, 1.0);
+        vec2 gp = pix / size;
+        vec2 cell = floor(gp);
+        vec2 fr = gp - cell;
+        fr = fr * fr * (3.0 - 2.0 * fr);
         uint seed = uint(uSeed);
-        float n = hash2(cell, seed) + hash2(cell, seed ^ 2654435769u) - 1.0;
+        vec2 ox = vec2(1.0, 0.0);
+        vec2 oy = vec2(0.0, 1.0);
+        float n00 = hash2(cell, seed) + hash2(cell, seed ^ 2654435769u) - 1.0;
+        float n10 = hash2(cell + ox, seed) + hash2(cell + ox, seed ^ 2654435769u) - 1.0;
+        float n01 = hash2(cell + oy, seed) + hash2(cell + oy, seed ^ 2654435769u) - 1.0;
+        float n11 = hash2(cell + ox + oy, seed) + hash2(cell + ox + oy, seed ^ 2654435769u) - 1.0;
+        float n = mix(mix(n00, n10, fr.x), mix(n01, n11, fr.x), fr.y) * ${FilmMath.GRAIN_NOISE_GAIN};
         vec3 chroma = vec3(hash2(cell, seed + 17u), hash2(cell, seed + 31u), hash2(cell, seed + 47u)) - 0.5;
         float lc = dot(c, LUMA);
-        float w = 1.0 - 0.7 * smoothstep(0.35, 1.0, lc);
-        c += (vec3(n) * 0.85 + chroma * 0.3) * (0.25 * uGrain.x * w);
+        float w = smoothstep(0.02, 0.3, lc) * (1.0 - 0.75 * smoothstep(0.6, 1.0, lc));
+        c += (vec3(n) + chroma * ${FilmMath.GRAIN_CHROMA}) * (${FilmMath.GRAIN_AMP} * uGrain.x * w);
     }
 
     c = clamp(c, 0.0, 1.0);
