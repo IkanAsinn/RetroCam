@@ -43,6 +43,7 @@ import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -78,6 +79,8 @@ fun Viewfinder(
     rotation: () -> Float,
     actions: ViewfinderActions,
     modifier: Modifier = Modifier,
+    aeLocked: Boolean = false,
+    onAeLockTap: () -> Unit = {},
 ) {
     val description = stringResource(R.string.cd_viewfinder)
     var focusPoint by remember { mutableStateOf<Offset?>(null) }
@@ -104,6 +107,7 @@ fun Viewfinder(
                     val down = awaitFirstDown(requireUnconsumed = false)
                     var zooming = false
                     var moved = false
+                    var consumedByChild = false
                     var totalDx = 0f
                     do {
                         val event = awaitPointerEvent(PointerEventPass.Main)
@@ -115,6 +119,7 @@ fun Viewfinder(
                             event.changes.forEach { it.consume() }
                         } else if (!zooming) {
                             val change = event.changes.firstOrNull() ?: break
+                            if (change.isConsumed) consumedByChild = true // e.g. the AE LOCK pill took this tap
                             totalDx += change.positionChange().x
                             val from = change.position - down.position
                             if (abs(from.x) > touchSlop || abs(from.y) > touchSlop) moved = true
@@ -122,6 +127,7 @@ fun Viewfinder(
                     } while (event.changes.any { it.pressed })
                     when {
                         zooming -> currentActions.onPinchEnd()
+                        consumedByChild -> Unit
                         !moved -> {
                             focusPoint = down.position
                             currentActions.onTapToFocus(down.position.x, down.position.y, size.width.toFloat(), size.height.toFloat())
@@ -209,6 +215,26 @@ fun Viewfinder(
                         .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(16.dp))
                         .padding(horizontal = 14.dp, vertical = 6.dp)
                         .uiRotate(rotation),
+                )
+            }
+        }
+
+        // AE LOCK indicator, top-left of the visible area; tapping it releases the lock.
+        if (aeLocked) {
+            val lockDescription = stringResource(R.string.cd_ae_lock_indicator)
+            Box(visibleModifier) {
+                Text(
+                    text = stringResource(R.string.ae_lock_indicator),
+                    color = RetroColors.Amber,
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(start = 12.dp, top = 16.dp)
+                        .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(16.dp))
+                        .clickable(role = Role.Button, onClick = onAeLockTap)
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                        .uiRotate(rotation)
+                        .semantics { contentDescription = lockDescription },
                 )
             }
         }

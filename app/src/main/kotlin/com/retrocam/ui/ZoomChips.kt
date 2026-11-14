@@ -34,6 +34,9 @@ import com.retrocam.ui.theme.RetroColors
 /** What the ratio chip shows: [label] ("4:3", "1:1", "Instax"...) and whether the camera's fixed format makes it read-only. */
 data class RatioChip(val label: String, val locked: Boolean)
 
+/** What the EV chip shows: [value] is the formatted compensation ("±0", "+0.7"); [highlighted] when non-zero, locked or open. */
+data class ExposureChip(val value: String, val highlighted: Boolean)
+
 @StringRes
 fun PhotoRatio.labelRes(): Int = when (this) {
     PhotoRatio.R4_3 -> R.string.ratio_4_3
@@ -65,6 +68,8 @@ fun ZoomChips(
     modifier: Modifier = Modifier,
     ratio: RatioChip? = null,
     onRatio: () -> Unit = {},
+    exposure: ExposureChip? = null,
+    onExposure: () -> Unit = {},
 ) {
     Row(
         modifier = modifier.fillMaxWidth().height(48.dp),
@@ -89,6 +94,28 @@ fun ZoomChips(
                         .uiRotate(rotation)
                         .background(Color.White.copy(alpha = if (ratio.locked) 0.06f else 0.12f), CircleShape)
                         .padding(horizontal = 12.dp, vertical = 6.dp),
+                )
+            }
+            if (exposure != null || stops.size >= 2) Spacer(Modifier.width(4.dp))
+        }
+        if (exposure != null) {
+            val description = stringResource(R.string.cd_exposure_chip, exposure.value)
+            Box(
+                modifier = Modifier
+                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                    .clip(CircleShape)
+                    .clickable(role = Role.Button, onClick = onExposure)
+                    .semantics { contentDescription = description },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = stringResource(R.string.exposure_chip, exposure.value),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (exposure.highlighted) RetroColors.Amber else RetroColors.Cream,
+                    modifier = Modifier
+                        .uiRotate(rotation)
+                        .background(Color.White.copy(alpha = 0.12f), CircleShape)
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
                 )
             }
             if (stops.size >= 2) Spacer(Modifier.width(4.dp))
