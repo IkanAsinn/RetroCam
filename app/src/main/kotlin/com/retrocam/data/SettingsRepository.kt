@@ -30,6 +30,7 @@ private object Keys {
     val facing = stringPreferencesKey("facing")
     val frameOption = booleanPreferencesKey("frame_option")
     val ratio = stringPreferencesKey("photo_ratio")
+    val mirrorFront = booleanPreferencesKey("mirror_front")
     val strengthPercent = stringPreferencesKey("strength_pct")
 }
 
@@ -56,6 +57,7 @@ fun Preferences.toSettings(): Settings {
         facing = enumOr(Keys.facing, d.facing),
         frameOption = this[Keys.frameOption] ?: d.frameOption,
         ratio = enumOr(Keys.ratio, PhotoRatio.R4_3),
+        mirrorFront = this[Keys.mirrorFront] ?: d.mirrorFront,
         strengthPercent = StrengthMath.decode(this[Keys.strengthPercent]),
     )
 }
@@ -76,6 +78,7 @@ fun MutablePreferences.writeSettings(s: Settings) {
     this[Keys.facing] = s.facing.name
     this[Keys.frameOption] = s.frameOption
     this[Keys.ratio] = s.ratio.name
+    this[Keys.mirrorFront] = s.mirrorFront
     val strengths = StrengthMath.encode(s.strengthPercent)
     if (strengths.isEmpty()) remove(Keys.strengthPercent) else this[Keys.strengthPercent] = strengths
 }

@@ -54,4 +54,6 @@ data class CapturedFrame(
     val flashFired: Boolean,
     val lens: ActiveLens,
     val timestampMillis: Long,
+    /** Which camera took the shot; the bitmap itself is never mirrored, the pipeline decides. */
+    val facing: Facing = Facing.BACK,
 )

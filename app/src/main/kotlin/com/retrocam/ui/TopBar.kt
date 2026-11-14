@@ -49,7 +49,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.retrocam.CameraScreenState
 import com.retrocam.R
+import com.retrocam.camera.Facing
 import com.retrocam.camera.FlashMode
+import com.retrocam.logic.FlashLogic
 import com.retrocam.data.TimerSetting
 import com.retrocam.profiles.FlareMode
 import com.retrocam.profiles.GrainLevel
@@ -77,10 +79,12 @@ fun TopBar(
     strengthOpen: Boolean = false,
 ) {
     val s = state.settings
-    val hasFlash = state.camera?.hasFlashUnit == true
+    val facing = state.camera?.facing ?: Facing.BACK
+    val hasFlash = state.camera?.let { FlashLogic.available(it.facing, it.hasFlashUnit) } == true
+    val flashMode = FlashLogic.displayMode(s.flash, facing)
     val off = stringResource(R.string.state_off)
 
-    val flashState = when (s.flash) {
+    val flashState = when (flashMode) {
         FlashMode.OFF -> off
         FlashMode.AUTO -> stringResource(R.string.state_auto)
         FlashMode.ON -> stringResource(R.string.state_on)
@@ -114,18 +118,18 @@ fun TopBar(
         val rowModifier = Modifier.fillMaxWidth().let { if (compact) it.horizontalScroll(rememberScrollState()) else it }
         Row(modifier = rowModifier, verticalAlignment = Alignment.CenterVertically) {
         TopToggle(
-            icon = when (s.flash) {
+            icon = when (flashMode) {
                 FlashMode.OFF -> Icons.Outlined.FlashOff
                 FlashMode.AUTO -> Icons.Outlined.FlashAuto
                 FlashMode.ON -> Icons.Outlined.FlashOn
             },
             description = if (hasFlash) stringResource(R.string.desc_flash, flashState) else stringResource(R.string.desc_flash_unavailable),
-            badge = when (s.flash) {
+            badge = when (flashMode) {
                 FlashMode.OFF -> null
                 FlashMode.AUTO -> stringResource(R.string.badge_auto)
                 FlashMode.ON -> stringResource(R.string.badge_on)
             },
-            active = hasFlash && s.flash != FlashMode.OFF,
+            active = hasFlash && flashMode != FlashMode.OFF,
             enabled = hasFlash,
             rotation = rotation,
             compact = compact,

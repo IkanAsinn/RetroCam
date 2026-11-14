@@ -28,6 +28,7 @@ import com.retrocam.profiles.CameraProfile
 import com.retrocam.profiles.EffectToggles
 import com.retrocam.profiles.LensKind
 import com.retrocam.logic.ExposureLogic
+import com.retrocam.logic.FlashLogic
 import com.retrocam.profiles.ParamsMapper
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.FlowPreview
@@ -195,8 +196,8 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
     /** Push flash / facing / zoom-unlock settings to the controller whenever they change (and once bound). */
     private fun observeCameraSettings() {
         viewModelScope.launch {
-            combine(bound, _settings.map { it.flash }.distinctUntilChanged(), hasFlashUnit()) { b, mode, unit ->
-                if (b) (if (unit) mode else FlashMode.OFF) else null
+            combine(bound, _settings.map { it.flash }.distinctUntilChanged(), hasFlashUnit(), cameraFacing()) { b, mode, unit, facing ->
+                if (b) FlashLogic.effective(mode, facing, unit) else null
             }.collect { mode -> if (mode != null) safely { controller.setFlashMode(mode) } }
         }
         viewModelScope.launch {
@@ -214,6 +215,11 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
                 .collect { u -> if (u != null) safely { controller.setFullZoomUnlocked(u) } }
         }
     }
+
+    private fun cameraFacing(): Flow<Facing> = controller.state.map { it?.facing ?: Facing.BACK }.distinctUntilChanged()
+
+    /** Light source for front-camera flash; the screen registers it while it is on screen and clears it on dispose. */
+    fun setScreenFlash(flash: androidx.camera.core.ImageCapture.ScreenFlash?) = safely { controller.setScreenFlash(flash) }
 
     private fun hasFlashUnit(): Flow<Boolean> = controller.state.map { it?.hasFlashUnit ?: false }.distinctUntilChanged()
 
@@ -279,9 +285,9 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
 
     fun cycleFlash() {
         val cam = controller.state.value
-        if (cam?.hasFlashUnit != true) return
-        val next = _settings.value.flash.cycleNext()
-        // A locked AE fights the flash's pre-capture metering: turning the flash on releases the lock.
+        if (cam == null || !FlashLogic.available(cam.facing, cam.hasFlashUnit)) return
+        val next = FlashLogic.next(_settings.value.flash, cam.facing)
+        // A locked AE fights the flash's pre-capture metering (also the screen flash): turning the flash on releases the lock.
         if (cam.aeLocked && !ExposureLogic.aeLockAllowed(next, true)) {
             safely { controller.setAeLocked(false) }
             message(R.string.msg_ae_lock_released_flash)
@@ -300,6 +306,7 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
     fun setFrameOption(on: Boolean) = update { it.copy(frameOption = on) }
     fun setExifLocation(on: Boolean) = update { it.copy(exifLocation = on) }
     fun setZoomUnlocked(on: Boolean) = update { it.copy(zoomUnlocked = on) }
+    fun setMirrorFront(on: Boolean) = update { it.copy(mirrorFront = on) }
 
     fun switchFacing() {
         val cam = controller.state.value ?: return
@@ -327,7 +334,7 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
             safely { controller.setAeLocked(false) }
             return
         }
-        if (!ExposureLogic.aeLockAllowed(_settings.value.flash, cam.hasFlashUnit)) {
+        if (!ExposureLogic.aeLockAllowed(_settings.value.flash, FlashLogic.available(cam.facing, cam.hasFlashUnit))) {
             message(R.string.msg_ae_lock_flash)
             return
         }
@@ -404,7 +411,8 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
             gate.captureFailed()
             return
         }
-        val flashOn = settings.flash == FlashMode.ON && camera.hasFlashUnit
+        val screenFlash = FlashLogic.usesScreenFlash(settings.flash, camera.facing)
+        val flashOn = !screenFlash && settings.flash == FlashMode.ON && camera.hasFlashUnit // unit flash: brief white blink
         val bright = highlight.value
         container.shutterFeedback.click(settings.shutterSound)
         if (flashOn) events.trySend(UiEvent.ScreenFlash)
@@ -423,7 +431,7 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
             }
             gate.captureFinished()
             publishSaving()
-            if (!flashOn && frame.flashFired) events.trySend(UiEvent.ScreenFlash) // Auto flash decided to fire
+            if (!flashOn && !screenFlash && frame.flashFired) events.trySend(UiEvent.ScreenFlash) // Auto flash decided to fire
 
             // Processing outlives this screen: a photo already taken must still be saved.
             container.appScope.launch {

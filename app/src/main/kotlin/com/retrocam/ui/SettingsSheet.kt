@@ -5,7 +5,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
@@ -22,6 +25,10 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -40,6 +47,7 @@ class SettingsActions(
     val onFrameOption: (Boolean) -> Unit,
     val onExifLocation: (Boolean) -> Unit,
     val onZoomUnlocked: (Boolean) -> Unit,
+    val onMirrorFront: (Boolean) -> Unit,
     val onSendCrashLog: () -> Unit,
     val onDismiss: () -> Unit,
 )
@@ -47,16 +55,28 @@ class SettingsActions(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsSheet(settings: Settings, versionName: String, actions: SettingsActions) {
+    // The sheet may never be taller than the window minus the status bar. Computed from the window (not from the sheet),
+    // so it cannot change while the sheet moves and feed back into the sheet's anchors.
+    val density = LocalDensity.current
+    val windowHeight = LocalWindowInfo.current.containerSize.height
+    val statusTop = WindowInsets.statusBars.getTop(density)
+    val maxContentHeight: Dp = remember(windowHeight, statusTop, density) {
+        with(density) { (windowHeight - statusTop).coerceAtLeast(0).toDp() }
+    }
     ModalBottomSheet(
         onDismissRequest = actions.onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        // Insets are applied exactly once, here: the content below is padded by the navigation bar only, so nothing
+        // inside the sheet reacts to the status-bar inset that starts applying when the sheet reaches the top.
+        contentWindowInsets = { WindowInsets(0) },
         containerColor = RetroColors.CharcoalRaised,
         contentColor = RetroColors.Cream,
     ) {
         Column(
             Modifier
+                .heightIn(max = maxContentHeight)
                 .verticalScroll(rememberScrollState())
-                .navigationBarsPadding()
+                .windowInsetsPadding(WindowInsets.navigationBars)
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 24.dp),
         ) {
@@ -110,6 +130,7 @@ fun SettingsSheet(settings: Settings, versionName: String, actions: SettingsActi
             }
 
             SwitchRow(R.string.settings_frame, R.string.settings_frame_desc, settings.frameOption, actions.onFrameOption)
+            SwitchRow(R.string.settings_mirror_front, R.string.settings_mirror_front_desc, settings.mirrorFront, actions.onMirrorFront)
             SwitchRow(R.string.settings_location, R.string.settings_location_desc, settings.exifLocation, actions.onExifLocation)
             SwitchRow(R.string.settings_zoom, R.string.settings_zoom_desc, settings.zoomUnlocked, actions.onZoomUnlocked)
 

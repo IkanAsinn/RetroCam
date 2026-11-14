@@ -103,6 +103,7 @@ class RetroCameraController(context: Context) {
     private var camera: Camera? = null
     private var preview: Preview? = null
     private var imageCapture: ImageCapture? = null
+    private var screenFlash: ImageCapture.ScreenFlash? = null
     private var zoomObserver: Observer<ZoomState>? = null
     private var zoomLive: androidx.lifecycle.LiveData<ZoomState>? = null
     private var activeLens = LensSpec(1f)
@@ -155,6 +156,15 @@ class RetroCameraController(context: Context) {
     fun setFlashMode(mode: FlashMode) {
         flashMode = mode
         imageCapture?.flashMode = mode.toCameraX()
+    }
+
+    /**
+     * Light source for front-camera flash (FLASH_MODE_SCREEN). CameraX calls apply() only inside the capture
+     * sequence and clear() when it ends, so the screen is untouched in preview. Survives rebinds.
+     */
+    fun setScreenFlash(flash: ImageCapture.ScreenFlash?) {
+        screenFlash = flash
+        imageCapture?.screenFlash = flash
     }
 
     /** Clamped to the allowed range. May rebind (short preview blink) when crossing to a lens that zoom cannot reach. */
@@ -250,8 +260,11 @@ class RetroCameraController(context: Context) {
         val modeAtShutter = flashMode
         val st = _state.value
         val lens = st?.lensKind ?: ActiveLens.MAIN
+        val facingAtShutter = st?.facing ?: Facing.BACK
         val hasUnit = st?.hasFlashUnit ?: false
         val takenAt = System.currentTimeMillis()
+        val screenLit = modeAtShutter != FlashMode.OFF && facingAtShutter == Facing.FRONT
+        try {
         return suspendCancellableCoroutine { cont ->
             ic.takePicture(
                 captureExecutor,
@@ -261,10 +274,10 @@ class RetroCameraController(context: Context) {
                             image.use {
                                 val fired = when (it.imageInfo.flashState) {
                                     FlashState.FIRED -> true
-                                    FlashState.NOT_FIRED, FlashState.UNAVAILABLE -> false
+                                    FlashState.NOT_FIRED, FlashState.UNAVAILABLE -> screenLit // the camera does not report a screen flash
                                     else -> modeAtShutter == FlashMode.ON && hasUnit
                                 }
-                                CapturedFrame(it.toUprightBitmap(), fired, lens, takenAt)
+                                CapturedFrame(it.toUprightBitmap(), fired, lens, takenAt, facingAtShutter)
                             }
                         } catch (t: Throwable) {
                             if (cont.isActive) cont.resumeWithException(t)
@@ -282,6 +295,10 @@ class RetroCameraController(context: Context) {
                     }
                 },
             )
+        }
+        } finally {
+            // CameraX clears the screen flash itself; this guarantees it on failure and cancellation too (clear() is idempotent).
+            if (screenLit) mainExecutor.execute { screenFlash?.clear() }
         }
     }
 
@@ -309,6 +326,7 @@ class RetroCameraController(context: Context) {
         val p = provider ?: return
         val owner = ownerRef?.get() ?: return
         detachZoomObserver()
+        mainExecutor.execute { screenFlash?.clear() } // a camera switch mid-capture must not leave the screen bright
         p.unbindAll()
 
         val newPreview = Preview.Builder()
@@ -344,6 +362,7 @@ class RetroCameraController(context: Context) {
         if (aeLocked) applyAeLockOptions(cam, false)
         aeLocked = false
         preview = newPreview
+        newCapture.screenFlash = screenFlash
         imageCapture = newCapture
         activeLens = lens
 
@@ -526,10 +545,11 @@ class RetroCameraController(context: Context) {
         false
     }
 
-    private fun FlashMode.toCameraX(): Int = when (this) {
-        FlashMode.OFF -> ImageCapture.FLASH_MODE_OFF
-        FlashMode.AUTO -> ImageCapture.FLASH_MODE_AUTO
-        FlashMode.ON -> ImageCapture.FLASH_MODE_ON
+    private fun FlashMode.toCameraX(): Int = when {
+        this == FlashMode.OFF -> ImageCapture.FLASH_MODE_OFF
+        facing == Facing.FRONT -> ImageCapture.FLASH_MODE_SCREEN // front has no unit: AUTO/ON both light the screen
+        this == FlashMode.AUTO -> ImageCapture.FLASH_MODE_AUTO
+        else -> ImageCapture.FLASH_MODE_ON
     }
 
     companion object {
