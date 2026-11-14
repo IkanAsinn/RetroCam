@@ -136,7 +136,7 @@ Priority: P0 = must ship in v1.0, P1 = should ship in v1.0, P2 = later.
 | F9 | Portrait and landscape: photo orientation follows the phone; controls rotate in place. | P0 |
 | F10 | Front and back camera switch. | P0 |
 | F11 | Save to Pictures/RetroCam via MediaStore with EXIF (date, orientation; location off by default). | P0 |
-| F12 | Last-shot thumbnail opens the photo in the system gallery. | P0 |
+| F12 | Last-shot thumbnail opens RetroCam's in-app gallery: a grid of its photos, a swipeable full-screen viewer with zoom, share, delete and "open in Photos", and multi-select delete. | P0 |
 | F13 | Self-timer: Off / 3 s / 10 s. | P1 |
 | F14 | Tap to focus and exposure. Zoom by pinch and by lens buttons (0.5×, 1×, 2×, telephoto) that use the phone's ultra-wide and telephoto lenses where available; see Zoom and lenses. | P1 |
 | F15 | Disposable mode: 27-shot roll counter and a simple viewfinder; photos save immediately (no delayed develop). | P2 |
@@ -170,7 +170,7 @@ Screen zones (portrait; landscape mirrors to the short edge)
 
 | Zone | Contents |
 |---|---|
-| Top bar | Flash, grain, flare, light leak, date stamp, timer — icon toggles that cycle on tap; long-press shows a label |
+| Top bar | Flash, grain, flare, light leak, date stamp, timer, filter strength, settings — icon toggles that cycle on tap; long-press shows a label. Below 352dp width the bar scrolls sideways instead of hiding toggles |
 | Viewfinder | Live filtered preview, 3:4 (or 1:1 for square types); tap to focus; pinch to zoom; swipe left/right to change camera type |
 | Camera strip | Horizontal strip of camera cards (icon + in-app name), selected card centred |
 | Bottom bar | Last-shot thumbnail (left), large shutter (centre), front/back switch (right) |
@@ -211,7 +211,7 @@ The top path runs every preview frame; the bottom path runs once per shot on a b
 | GPU effects | OpenGL ES 3.0 fragment shader on a dedicated GL thread; EGL off-screen surface for captures | Real-time at 30 fps, identical output for saved photos |
 | Colour grading | 33³ 3D LUT per camera type, packed as a PNG and sampled as a 3D texture | One lookup per pixel, tiny files |
 | Grain and leaks | Procedural noise and gradients in the shader | No large texture assets |
-| Image output | JPEG quality 92 + androidx.exifinterface | Correct orientation and date metadata |
+| Image output | ImageCapture in maximize-quality mode, JPEG quality 95 + androidx.exifinterface | Correct orientation and date metadata |
 | Storage | MediaStore (photos), DataStore Preferences (settings) | No storage permission needed |
 | Dependency injection | Manual (constructor injection) | Faster startup, smaller APK than Hilt |
 | Build | Latest stable Android Gradle Plugin, version catalog, R8 full mode, resource shrinking, baseline + startup profiles, arm64-v8a only | Small and fast-starting APK |
@@ -244,7 +244,7 @@ Targets are measured on your own phone as the reference device.
 Privacy and permissions
 - Permissions: CAMERA (required), ACCESS_FINE_LOCATION (only if the user enables location EXIF), VIBRATE.
 - No INTERNET permission. Photos never leave the device.
-- No READ_MEDIA permissions needed: saving uses MediaStore, and the thumbnail shows RetroCam's own last photo.
+- No READ_MEDIA permissions needed: saving uses MediaStore, and the thumbnail and in-app gallery list only photos this install of RetroCam saved. Photos saved by an earlier install are not listed (scoped storage hides them without a read permission); they stay in the phone's gallery.
 Quality of the look
 - Saved photo and preview differ by no more than a visually negligible amount (same shader, same LUT, same parameters).
 - Grain is resolution-aware so it looks the same on the 12 MP file as on the preview.
@@ -298,5 +298,5 @@ Risks
 
 ### Diagrams (described)
 
-- **Image pipeline:** CameraX Preview (live frames) → Film shader (GPU) → Viewfinder (Compose, 30 fps). ImageCapture (full resolution) → same Film shader → JPEG + EXIF (orientation, date) → MediaStore (Pictures/RetroCam) → Thumbnail (opens the gallery). Camera profile (JSON + LUT image) and Controls (camera type, toggles) feed the shader parameters for both paths.
+- **Image pipeline:** CameraX Preview (live frames) → Film shader (GPU) → Viewfinder (Compose, 30 fps). ImageCapture (full resolution) → same Film shader → JPEG + EXIF (orientation, date) → MediaStore (Pictures/RetroCam) → Thumbnail (opens the in-app gallery). Camera profile (JSON + LUT image) and Controls (camera type, toggles) feed the shader parameters for both paths.
 - **Roadmap gates:** Phase 0 gate: signed APK from CI installs on phone. Phase 2 gate: saved photo matches the preview (golden-image test). Phase 5 gate: all performance targets met on the reference phone.
