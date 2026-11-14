@@ -11,8 +11,8 @@ android {
         applicationId = "com.retrocam"
         minSdk = 28
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.3.0"
+        versionCode = 4
+        versionName = "0.4.0"
     }
 
     // Release signing only when all four env vars are present; otherwise release stays unsigned.
