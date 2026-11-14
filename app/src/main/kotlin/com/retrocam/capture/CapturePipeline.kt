@@ -6,6 +6,7 @@ import android.net.Uri
 import com.retrocam.camera.CapturedFrame
 import com.retrocam.camera.PhotoSaver
 import com.retrocam.data.Settings
+import com.retrocam.filmengine.BitmapMirror
 import com.retrocam.filmengine.DateStampRenderer
 import com.retrocam.filmengine.FrameComposer
 import com.retrocam.filmengine.FrameFormat
@@ -13,6 +14,7 @@ import com.retrocam.filmengine.Highlight
 import com.retrocam.filmengine.OffscreenFilmRenderer
 import com.retrocam.logic.FrameSelection
 import com.retrocam.logic.LensMapping
+import com.retrocam.logic.MirrorLogic
 import com.retrocam.logic.ReleasableHolder
 import com.retrocam.logic.StrengthMath
 import com.retrocam.logic.UiMath
@@ -66,8 +68,16 @@ class CapturePipeline(
             toRecycle += rendered
             if (rendered !== frame.bitmap) frame.bitmap.recycle() // free the 48 MB input early
 
+            // Mirror after the film render (leaks/flare already match the mirrored preview) and before the frame crop and
+            // the date stamp (the stamp text must never be mirrored). horizontal() recycles its input.
+            val filmed = if (MirrorLogic.shouldMirror(shot.settings.mirrorFront, frame.facing)) {
+                BitmapMirror.horizontal(rendered).also { toRecycle += it }
+            } else {
+                rendered
+            }
+
             val format = FrameSelection.choose(shot.profile.frame, shot.settings.frameOption)
-            var finished = FrameComposer.apply(rendered, format)
+            var finished = FrameComposer.apply(filmed, format)
             if (format == FrameFormat.FULL) {
                 // User ratio: crop the finished render (centre, orientation-aware) before the date stamp so the stamp sits in the final corner.
                 finished = FrameComposer.applyRatio(finished, shot.settings.ratio)

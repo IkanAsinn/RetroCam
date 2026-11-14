@@ -27,6 +27,7 @@ class SettingsTest {
         assertFalse("date stamp must be off by default", s.dateStamp)
         assertFalse("EXIF location must be opt-in", s.exifLocation)
         assertFalse(s.zoomUnlocked)
+        assertFalse("mirror must keep today's behaviour by default", s.mirrorFront)
         assertTrue(s.shutterSound)
         assertTrue(s.frameOption)
         assertEquals(TimerSetting.OFF, s.timer)
@@ -47,7 +48,7 @@ class SettingsTest {
         val s = Settings(
             cameraId = "gold_snap", flash = FlashMode.ON, grain = GrainLevel.HIGH, flare = FlareMode.ALWAYS,
             leaks = LeakMode.STRONG, dateStamp = true, dateFormat = DateStampFormat.DD_MM_YY, timer = TimerSetting.TEN,
-            shutterSound = false, exifLocation = true, zoomUnlocked = true, facing = Facing.FRONT, frameOption = false,
+            shutterSound = false, exifLocation = true, zoomUnlocked = true, facing = Facing.FRONT, frameOption = false, mirrorFront = true,
         )
         val prefs = mutablePreferencesOf().also { it.writeSettings(s) }
         assertEquals(s, prefs.toSettings())

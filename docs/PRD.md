@@ -128,7 +128,7 @@ Priority: P0 = must ship in v1.0, P1 = should ship in v1.0, P2 = later.
 | F1 | Live viewfinder shows the selected camera type's look in real time (colour, grain, vignette). | P0 |
 | F2 | One-tap capture saves a full-resolution JPEG with the same look as the preview. | P0 |
 | F3 | Camera type picker: horizontal strip of camera cards; swipe on the viewfinder also changes type. | P0 |
-| F4 | Flash: Off / Auto / On. Fires the real flash and applies the camera type's flash look (hot spot, falloff, colour). | P0 |
+| F4 | Flash: Off / Auto / On. Fires the real flash and applies the camera type's flash look (hot spot, falloff, colour). On the front camera (no flash unit) the toggle is Off / On only (a stored Auto reads as On) and uses the screen as the flash: at the moment of capture, after any self-timer, the screen goes pure white at full window brightness, then the previous brightness is restored; brightness is never raised in the preview or on toggle. The shot gets the same flash look as a real flash. AE lock is not available while it is on. | P0 |
 | F5 | Grain: Off / Low / Normal / High, scaled per camera type. Luminance-dependent (stronger in shadows), new pattern every shot. | P0 |
 | F6 | Lens flare: Off / Auto (added when a bright highlight is detected) / Always. | P1 |
 | F7 | Light leaks: Off / Subtle / Strong; random position and colour per shot. | P1 |
@@ -147,6 +147,7 @@ Priority: P0 = must ship in v1.0, P1 = should ship in v1.0, P2 = later.
 | F20 | Shutter sound and haptic, with a mute option. | P1 |
 | F21 | Photo ratio: 4:3 (default, full sensor frame), 3:2, 16:9, 1:1. Applies to normal cameras and to Instant Mini without its frame; square, instant-framed and Half Frame cameras keep their own format (the chip shows it dimmed and explains on tap). Centre crop after the film look, so the saved photo matches the viewfinder mask; the ratio follows the photo's orientation (portrait 3:4 / 2:3 / 9:16, landscape 4:3 / 3:2 / 16:9). The choice is remembered. | P1 |
 | F22 | Exposure compensation (EV): an EV chip next to the ratio chip opens a slider on the bottom edge of the viewfinder (the camera's own range and steps, e.g. −2 to +2 in 1/3 steps; value label "±0", "+0.7", "−1.3"; double-tap the value to reset; TalkBack announces the EV). Applies to the live preview and the saved photo. Held for the session only: back to ±0 on a fresh launch, kept across camera types, front/back and the gallery; hidden when the phone reports no compensation. AE lock (toggle in the same row, "AE LOCK" pill on the viewfinder, tap the pill to release) holds auto exposure and white balance; it is released on a camera or lens switch and is not available while the flash is on or auto. Tap to focus keeps its point (no auto-reset); while AE is locked a tap only refocuses. | P1 |
+| F23 | Mirror front camera photos (setting, off by default): save selfies as they look in the viewfinder. Applied after the film look and before the frame/ratio crop and the date stamp, so light leaks and flare match the preview and the date text is never mirrored. Back camera photos are never mirrored. | P1 |
 
 **Hard rules**
 
@@ -172,12 +173,12 @@ Screen zones (portrait; landscape mirrors to the short edge)
 
 | Zone | Contents |
 |---|---|
-| Top bar | Flash, grain, flare, light leak, date stamp, timer, filter strength, settings — icon toggles that cycle on tap; long-press shows a label. Below 352dp width the bar scrolls sideways instead of hiding toggles |
+| Top bar | Flash (front camera: Off / On, screen flash), grain, flare, light leak, date stamp, timer, filter strength, settings — icon toggles that cycle on tap; long-press shows a label. Below 352dp width the bar scrolls sideways instead of hiding toggles |
 | Viewfinder | Live filtered preview in a fixed 3:4 box, with a crop mask for 3:2, 16:9 and 1:1 (square types); "AE LOCK" pill top-left while locked; tap to focus; pinch to zoom; swipe left/right to change camera type |
 | Ratio, EV and zoom chips | Row above the camera strip: a ratio chip (4:3 · 3:2 · 16:9 · 1:1, tap to cycle; dimmed with the fixed format name on fixed-format cameras), an EV chip (current compensation, e.g. "EV +0.7"; tap opens the exposure slider with the AE lock toggle, replacing the strength row if open; hidden if unsupported), then the lens chips. The ratio chip shows even on single-lens phones. Ratio also available in settings |
 | Camera strip | Horizontal strip of camera cards (icon + in-app name), selected card centred |
 | Bottom bar | Last-shot thumbnail (left), large shutter (centre), front/back switch (right) |
-| Settings sheet | Opened from a small gear: shutter sound, save location, EXIF location, zoom unlock, about |
+| Settings sheet | Opened from a small gear: shutter sound, date format, photo ratio, white frame, mirror front camera photos, EXIF location, zoom unlock, about |
 
 Orientation behaviour
 - The activity layout stays fixed to the sensor (like the stock camera); icons and labels rotate 90° with a 200 ms animation.

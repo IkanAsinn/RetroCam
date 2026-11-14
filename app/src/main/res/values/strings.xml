@@ -120,6 +120,8 @@
     <string name="ratio_half">Half</string>
     <string name="cd_ratio">Photo ratio %1$s. Tap to change.</string>
     <string name="cd_ratio_fixed">Photo ratio %1$s. This camera shoots a fixed format.</string>
+    <string name="settings_mirror_front">Mirror front camera photos</string>
+    <string name="settings_mirror_front_desc">Save selfies as they look in the viewfinder.</string>
     <string name="settings_ratio">Photo ratio</string>
     <string name="settings_ratio_desc">Crop for normal cameras. Square, instant and Half Frame cameras keep their own format.</string>
     <string name="zoom_row_label">Zoom levels</string>

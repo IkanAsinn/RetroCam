@@ -39,6 +39,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
+import androidx.activity.compose.LocalActivity
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -56,6 +57,7 @@ import com.retrocam.filmengine.DateStampFormat
 import com.retrocam.filmengine.DateStampRenderer
 import com.retrocam.camera.ExposureInfo
 import com.retrocam.logic.ExposureLogic
+import com.retrocam.logic.FlashLogic
 import com.retrocam.logic.FrameSelection
 import com.retrocam.logic.Overlay
 import com.retrocam.logic.Overlays
@@ -88,6 +90,17 @@ fun CameraScreen(
     val snackbar = remember { SnackbarHostState() }
     val flashAlpha = remember { Animatable(0f) }
     var showSettings by remember { mutableStateOf(false) }
+    var screenFlashShown by remember { mutableStateOf(false) }
+    val activityWindow = LocalActivity.current?.window
+    val screenFlash = remember(activityWindow) { WindowScreenFlash({ activityWindow }, { screenFlashShown = it }) }
+    // Front-camera flash: CameraX drives apply()/clear() during a capture only. Every other exit also restores the brightness.
+    DisposableEffect(screenFlash, viewModel) {
+        viewModel.setScreenFlash(screenFlash)
+        onDispose {
+            viewModel.setScreenFlash(null)
+            screenFlash.clear()
+        }
+    }
     var showGallery by rememberSaveable { mutableStateOf(false) }
 
     // Strength / exposure row: one overlay at a time on the bottom edge of the viewfinder area (so the viewfinder
@@ -108,7 +121,10 @@ fun CameraScreen(
             owner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { viewModel.bindCamera(owner) }
         }
     }
-    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewModel.onScreenStopped() }
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+        viewModel.onScreenStopped()
+        screenFlash.clear()
+    }
 
     // Screen stays on while the viewfinder is up.
     val view = LocalView.current
@@ -238,7 +254,7 @@ fun CameraScreen(
                         index = camera.exposureIndex,
                         onIndexChange = viewModel::setExposureIndex,
                         aeLocked = camera.aeLocked,
-                        aeLockEnabled = ExposureLogic.aeLockAllowed(state.settings.flash, camera.hasFlashUnit),
+                        aeLockEnabled = ExposureLogic.aeLockAllowed(state.settings.flash, FlashLogic.available(camera.facing, camera.hasFlashUnit)),
                         onToggleLock = viewModel::toggleAeLock,
                         onInteraction = { overlayTouch++ },
                         rotation = rotation,
@@ -298,6 +314,11 @@ fun CameraScreen(
                 .background(Color.White),
         )
 
+        // Front-camera screen flash: pure white over everything (bars included), shown instantly.
+        if (screenFlashShown) {
+            Box(Modifier.fillMaxSize().background(Color.White))
+        }
+
         SnackbarHost(
             hostState = snackbar,
             modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 200.dp),
@@ -305,10 +326,10 @@ fun CameraScreen(
     }
 
     if (showSettings) {
-        SettingsSheet(
-            settings = state.settings,
-            versionName = remember { appVersionName(context) },
-            actions = SettingsActions(
+        // Built once per sheet: CameraScreen recomposes on every zoom/highlight/rotation change, and a fresh actions
+        // object each time would re-run the whole sheet content for nothing while the user is dragging it.
+        val settingsActions = remember(viewModel, context, crashLogger, locationLauncher, hasLocationPermission) {
+            SettingsActions(
                 onShutterSound = viewModel::setShutterSound,
                 onDateFormat = viewModel::setDateFormat,
                 onFrameOption = viewModel::setFrameOption,
@@ -323,9 +344,15 @@ fun CameraScreen(
                     }
                 },
                 onZoomUnlocked = viewModel::setZoomUnlocked,
+                onMirrorFront = viewModel::setMirrorFront,
                 onSendCrashLog = { shareCrashLog(context, crashLogger)?.let(viewModel::message) },
                 onDismiss = { showSettings = false },
-            ),
+            )
+        }
+        SettingsSheet(
+            settings = state.settings,
+            versionName = remember { appVersionName(context) },
+            actions = settingsActions,
         )
     }
 }

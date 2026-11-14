@@ -29,6 +29,7 @@ data class Settings(
     val facing: Facing = Facing.BACK,
     val frameOption: Boolean = true,           // white border for instant types
     val ratio: PhotoRatio = PhotoRatio.R4_3,   // applies to FULL-format cameras only; remembered for fixed-format ones
+    val mirrorFront: Boolean = false,          // save front-camera photos mirrored like the viewfinder
     val strengthPercent: Map<String, Int> = emptyMap(), // profile id -> filter strength percent; missing = 100
 ) {
     val toggles: EffectToggles get() = EffectToggles(grain, flare, leaks)
