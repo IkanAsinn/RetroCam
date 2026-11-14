@@ -12,6 +12,18 @@ import kotlin.math.roundToInt
 enum class FrameFormat { FULL, SQUARE, INSTANT_SQUARE, INSTANT_MINI, HALF_FRAME }
 
 /**
+ * Aspect ratio of a FULL-format photo, written for the PORTRAIT orientation (width : height).
+ * A landscape photo uses the transposed ratio (4:3, 3:2, 16:9). [R4_3] is the full sensor frame: no crop.
+ */
+enum class PhotoRatio(val portraitW: Int, val portraitH: Int) {
+    R4_3(3, 4), R3_2(2, 3), R16_9(9, 16), R1_1(1, 1);
+
+    /** Portrait width / height, e.g. 0.5625 for 16:9. This is also the preview mask aspect in the fixed 3:4 viewfinder box. */
+    val portraitAspect: Float get() = portraitW.toFloat() / portraitH
+    val isFullFrame: Boolean get() = this == R4_3
+}
+
+/**
  * Post-processing on the finished Bitmap (capture path only; preview draws these as Compose overlays).
  *
  * Output geometry (the source is never modified; except FULL the result is a new bitmap):
@@ -57,6 +69,39 @@ object FrameComposer {
             )
         }
         FrameFormat.HALF_FRAME -> halfFrame(src)
+    }
+
+    /**
+     * Applies [ratio] to the upright [src] (FULL format only). Portrait sources (height >= width) get W:H, landscape
+     * sources H:W, so the ratio always describes the photo as it was taken. Returns [src] itself for 4:3 or when the
+     * crop would change nothing.
+     */
+    fun applyRatio(src: Bitmap, ratio: PhotoRatio): Bitmap {
+        if (ratio.isFullFrame) return src
+        val r = ratioRect(src.width, src.height, ratio)
+        if (r.left == 0 && r.top == 0 && r.width() == src.width && r.height() == src.height) return src
+        return crop(src, r)
+    }
+
+    /**
+     * Largest centred rect of [ratio] inside w x h, integer maths only (no float drift). The ratio is portrait
+     * W:H when h >= w and landscape H:W otherwise; its aspect is exact to within 1 px on the rounded side.
+     */
+    fun ratioRect(w: Int, h: Int, ratio: PhotoRatio): Rect {
+        val portrait = h >= w
+        val rw = if (portrait) ratio.portraitW else ratio.portraitH
+        val rh = if (portrait) ratio.portraitH else ratio.portraitW
+        var cw = w
+        var ch = ((w.toLong() * rh + rw / 2) / rw).toInt()
+        if (ch > h) {
+            ch = h
+            cw = ((h.toLong() * rw + rh / 2) / rh).toInt()
+        }
+        cw = max(1, min(cw, w))
+        ch = max(1, min(ch, h))
+        val x = (w - cw) / 2
+        val y = (h - ch) / 2
+        return Rect(x, y, x + cw, y + ch)
     }
 
     /** Largest centred rect of width/height ratio [aspect] inside w x h. */

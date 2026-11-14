@@ -14,6 +14,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -50,6 +51,8 @@ import com.retrocam.R
 import com.retrocam.ui.theme.RetroColors
 import kotlin.math.abs
 
+private const val BOX_ASPECT = 3f / 4f
+
 class ViewfinderActions(
     val onTapToFocus: (x: Float, y: Float, width: Float, height: Float) -> Unit,
     val onPinch: (scale: Float) -> Unit,
@@ -60,13 +63,13 @@ class ViewfinderActions(
 
 /**
  * The 3:4 live preview. The Preview use case already carries the film look (GL effect), so this
- * only places it and draws overlays: 1:1 crop mask, half-frame guide, date stamp, focus ring,
+ * only places it and draws overlays: crop mask (1:1 bars above/below; 3:2 and 16:9 bars left/right; [maskAspect] is portrait width/height, null = none), half-frame guide, date stamp, focus ring,
  * camera-type name and the timer countdown. The 3:4 box is fixed so tap-to-focus maps 1:1 onto the sensor frame.
  */
 @Composable
 fun Viewfinder(
     surfaceRequest: SurfaceRequest?,
-    squareMask: Boolean,
+    maskAspect: Float?,
     halfFrameGuide: Boolean,
     dateStamp: ImageBitmap?,
     cameraName: String?,
@@ -136,13 +139,17 @@ fun Viewfinder(
             )
         }
 
-        // Date stamp preview, bottom-right of the (possibly square) photo area.
+        // The visible (unmasked) photo area, centred: bars above/below for 1:1, left/right for the taller 3:2 and 9:16.
+        val visibleModifier = if (maskAspect != null) {
+            (if (maskAspect < BOX_ASPECT) Modifier.fillMaxHeight() else Modifier.fillMaxWidth())
+                .aspectRatio(maskAspect).align(Alignment.Center)
+        } else {
+            Modifier.fillMaxSize()
+        }
+
+        // Date stamp preview, bottom-right of the (possibly masked) photo area.
         if (dateStamp != null) {
-            val stampModifier = if (squareMask) {
-                Modifier.fillMaxWidth().aspectRatio(1f).align(Alignment.Center)
-            } else {
-                Modifier.fillMaxSize()
-            }
+            val stampModifier = visibleModifier
             Image(
                 bitmap = dateStamp,
                 contentDescription = stringResource(R.string.cd_date_stamp_preview),
@@ -151,14 +158,22 @@ fun Viewfinder(
             )
         }
 
-        // 1:1 crop mask and half-frame guide.
+        // Crop mask and half-frame guide.
         Canvas(Modifier.fillMaxSize()) {
-            if (squareMask) {
-                val bar = (size.height - size.width) / 2f
-                if (bar > 0f) {
-                    val shade = Color.Black.copy(alpha = 0.72f)
-                    drawRect(shade, Offset.Zero, Size(size.width, bar))
-                    drawRect(shade, Offset(0f, size.height - bar), Size(size.width, bar))
+            if (maskAspect != null) {
+                val shade = Color.Black.copy(alpha = 0.72f)
+                if (maskAspect < BOX_ASPECT) {
+                    val bar = (size.width - size.height * maskAspect) / 2f
+                    if (bar > 0f) {
+                        drawRect(shade, Offset.Zero, Size(bar, size.height))
+                        drawRect(shade, Offset(size.width - bar, 0f), Size(bar, size.height))
+                    }
+                } else {
+                    val bar = (size.height - size.width / maskAspect) / 2f
+                    if (bar > 0f) {
+                        drawRect(shade, Offset.Zero, Size(size.width, bar))
+                        drawRect(shade, Offset(0f, size.height - bar), Size(size.width, bar))
+                    }
                 }
             }
             if (halfFrameGuide) {
@@ -182,18 +197,20 @@ fun Viewfinder(
         // Camera-type name, fades in after a swipe or tap on the strip.
         val nameAlpha by animateFloatAsState(if (nameVisible) 1f else 0f, tween(250), label = "nameAlpha")
         if (cameraName != null) {
-            Text(
-                text = cameraName,
-                color = RetroColors.Cream,
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 16.dp)
-                    .graphicsLayer { alpha = nameAlpha }
-                    .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(16.dp))
-                    .padding(horizontal = 14.dp, vertical = 6.dp)
-                    .uiRotate(rotation),
-            )
+            Box(visibleModifier) {
+                Text(
+                    text = cameraName,
+                    color = RetroColors.Cream,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 16.dp)
+                        .graphicsLayer { alpha = nameAlpha }
+                        .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(16.dp))
+                        .padding(horizontal = 14.dp, vertical = 6.dp)
+                        .uiRotate(rotation),
+                )
+            }
         }
 
         // Self-timer countdown; tapping it cancels.

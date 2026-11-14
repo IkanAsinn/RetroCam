@@ -45,6 +45,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.retrocam.R
@@ -56,6 +58,8 @@ import kotlin.math.abs
 
 private val CardWidth = 92.dp
 private val CardHeight = 88.dp
+private val CardPadding = 6.dp
+private val FaceSide = minOf(CardWidth, CardHeight) - CardPadding * 2
 
 /**
  * Horizontal strip of camera cards; the selected one is centred and outlined in orange.
@@ -139,7 +143,7 @@ internal suspend fun LazyListState.centreItem(index: Int) {
 }
 
 @Composable
-private fun CameraCard(
+internal fun CameraCard(
     profile: CameraProfile,
     selected: Boolean,
     rotation: () -> Float,
@@ -150,46 +154,59 @@ private fun CameraCard(
     else stringResource(R.string.cd_camera_card, profile.name)
     val shape = RoundedCornerShape(14.dp)
     Box(contentAlignment = Alignment.TopEnd) {
-    Column(
-        modifier = Modifier
-            .width(CardWidth)
-            .height(CardHeight)
-            .clip(shape)
-            .border(
-                border = if (selected) BorderStroke(2.dp, RetroColors.Orange) else BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-                shape = shape,
-            )
-            .clickable(role = Role.Button, onClick = onClick)
-            .semantics { contentDescription = label; this.selected = selected; role = Role.Button }
-            .padding(horizontal = 6.dp, vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        CardArtView(profile, Modifier.size(width = 72.dp, height = 54.dp))
-        Text(
-            text = profile.name,
-            color = if (selected) RetroColors.Cream else RetroColors.Cream.copy(alpha = 0.7f),
-            style = MaterialTheme.typography.labelSmall,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 4.dp).uiRotate(rotation),
-        )
-    }
-    if (selected && strengthPercent != 100) {
-        val badge = stringResource(R.string.strength_value, strengthPercent)
-        val badgeDescription = stringResource(R.string.cd_strength_badge, strengthPercent)
-        Text(
-            text = badge,
-            color = RetroColors.Charcoal,
-            style = MaterialTheme.typography.labelSmall,
+        Box(
             modifier = Modifier
-                .padding(top = 4.dp, end = 4.dp)
-                .background(RetroColors.Orange, RoundedCornerShape(8.dp))
-                .padding(horizontal = 5.dp, vertical = 1.dp)
-                .semantics { contentDescription = badgeDescription }
-                .uiRotate(rotation),
-        )
-    }
+                .width(CardWidth)
+                .height(CardHeight)
+                .clip(shape)
+                .border(
+                    border = if (selected) BorderStroke(2.dp, RetroColors.Orange) else BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                    shape = shape,
+                )
+                .clickable(role = Role.Button, onClick = onClick)
+                .semantics { contentDescription = label; this.selected = selected; role = Role.Button }
+                .padding(CardPadding),
+            contentAlignment = Alignment.Center,
+        ) {
+            // The face (art + name) lives in a square of side min(inner width, inner height) that turns as a whole:
+            // a square rotated by any multiple of 90 degrees covers the same area, so nothing leaves the card.
+            Column(
+                modifier = Modifier
+                    .size(FaceSide)
+                    .testTag("cameraFace")
+                    .uiRotate(rotation),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                CardArtView(profile, Modifier.size(width = 64.dp, height = 48.dp))
+                Text(
+                    text = profile.name,
+                    color = if (selected) RetroColors.Cream else RetroColors.Cream.copy(alpha = 0.7f),
+                    style = MaterialTheme.typography.labelSmall,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp).testTag("cameraLabel"),
+                )
+            }
+        }
+        if (selected && strengthPercent != 100) {
+            val badge = stringResource(R.string.strength_value, strengthPercent)
+            val badgeDescription = stringResource(R.string.cd_strength_badge, strengthPercent)
+            // Margins keep the badge inside the card even when it stands on its end (rotated 90 degrees).
+            Text(
+                text = badge,
+                color = RetroColors.Charcoal,
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier
+                    .padding(top = 9.dp, end = 7.dp)
+                    .background(RetroColors.Orange, RoundedCornerShape(8.dp))
+                    .padding(horizontal = 5.dp, vertical = 1.dp)
+                    .semantics { contentDescription = badgeDescription }
+                    .testTag("strengthBadge")
+                    .uiRotate(rotation),
+            )
+        }
     }
 }
 

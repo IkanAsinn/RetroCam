@@ -145,6 +145,7 @@ Priority: P0 = must ship in v1.0, P1 = should ship in v1.0, P2 = later.
 | F18 | Re-develop: apply a different camera type to an already-taken photo (original kept in app storage). | P2 |
 | F19 | Import a photo from the gallery and apply a camera type. | P2 |
 | F20 | Shutter sound and haptic, with a mute option. | P1 |
+| F21 | Photo ratio: 4:3 (default, full sensor frame), 3:2, 16:9, 1:1. Applies to normal cameras and to Instant Mini without its frame; square, instant-framed and Half Frame cameras keep their own format (the chip shows it dimmed and explains on tap). Centre crop after the film look, so the saved photo matches the viewfinder mask; the ratio follows the photo's orientation (portrait 3:4 / 2:3 / 9:16, landscape 4:3 / 3:2 / 16:9). The choice is remembered. | P1 |
 
 **Hard rules**
 
@@ -171,7 +172,8 @@ Screen zones (portrait; landscape mirrors to the short edge)
 | Zone | Contents |
 |---|---|
 | Top bar | Flash, grain, flare, light leak, date stamp, timer, filter strength, settings — icon toggles that cycle on tap; long-press shows a label. Below 352dp width the bar scrolls sideways instead of hiding toggles |
-| Viewfinder | Live filtered preview, 3:4 (or 1:1 for square types); tap to focus; pinch to zoom; swipe left/right to change camera type |
+| Viewfinder | Live filtered preview in a fixed 3:4 box, with a crop mask for 3:2, 16:9 and 1:1 (square types); tap to focus; pinch to zoom; swipe left/right to change camera type |
+| Ratio and zoom chips | Row above the camera strip: a ratio chip (4:3 · 3:2 · 16:9 · 1:1, tap to cycle; dimmed with the fixed format name on fixed-format cameras) followed by the lens chips. The ratio chip shows even on single-lens phones. Also available in settings |
 | Camera strip | Horizontal strip of camera cards (icon + in-app name), selected card centred |
 | Bottom bar | Last-shot thumbnail (left), large shutter (centre), front/back switch (right) |
 | Settings sheet | Opened from a small gear: shutter sound, save location, EXIF location, zoom unlock, about |

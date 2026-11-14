@@ -8,6 +8,7 @@ import com.retrocam.camera.PhotoSaver
 import com.retrocam.data.Settings
 import com.retrocam.filmengine.DateStampRenderer
 import com.retrocam.filmengine.FrameComposer
+import com.retrocam.filmengine.FrameFormat
 import com.retrocam.filmengine.Highlight
 import com.retrocam.filmengine.OffscreenFilmRenderer
 import com.retrocam.logic.FrameSelection
@@ -67,6 +68,10 @@ class CapturePipeline(
 
             val format = FrameSelection.choose(shot.profile.frame, shot.settings.frameOption)
             var finished = FrameComposer.apply(rendered, format)
+            if (format == FrameFormat.FULL) {
+                // User ratio: crop the finished render (centre, orientation-aware) before the date stamp so the stamp sits in the final corner.
+                finished = FrameComposer.applyRatio(finished, shot.settings.ratio)
+            }
             toRecycle += finished
 
             if (shot.settings.dateStamp) {

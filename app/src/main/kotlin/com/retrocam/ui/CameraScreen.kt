@@ -37,6 +37,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -50,6 +51,7 @@ import com.retrocam.camera.Facing
 import com.retrocam.data.PhotoLibrary
 import com.retrocam.gallery.GalleryScreen
 import com.retrocam.gallery.GalleryViewModel
+import kotlin.math.roundToInt
 import com.retrocam.filmengine.DateStampFormat
 import com.retrocam.filmengine.DateStampRenderer
 import com.retrocam.logic.FrameSelection
@@ -152,12 +154,19 @@ fun CameraScreen(
 
     val frame = selected?.frame ?: FrameFormat.FULL
     val frameOption = state.settings.frameOption
-    val squareMask = FrameSelection.isSquarePreview(frame, frameOption)
+    val maskAspect = FrameSelection.previewMaskAspect(frame, frameOption, state.settings.ratio)
+    val ratioLocked = FrameSelection.isRatioLocked(frame, frameOption)
+    val ratioChip = RatioChip(
+        label = stringResource(
+            if (ratioLocked) FrameSelection.choose(frame, frameOption).fixedLabelRes() else state.settings.ratio.labelRes(),
+        ),
+        locked = ratioLocked,
+    )
     val stamp by produceDateStamp(
         enabled = state.settings.dateStamp,
         format = state.settings.dateFormat,
         colorHex = selected?.dateStampColor,
-        square = squareMask,
+        aspect = maskAspect ?: (3f / 4f),
     )
 
     val camera = state.camera
@@ -188,7 +197,7 @@ fun CameraScreen(
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Viewfinder(
                     surfaceRequest = surfaceRequest,
-                    squareMask = squareMask,
+                    maskAspect = maskAspect,
                     halfFrameGuide = frame == FrameFormat.HALF_FRAME,
                     dateStamp = stamp,
                     cameraName = selected?.name,
@@ -218,6 +227,8 @@ fun CameraScreen(
                 selectedIndex = selectedStop,
                 rotation = rotation,
                 onSelect = { viewModel.setZoom(it.ratio) },
+                ratio = ratioChip,
+                onRatio = { if (ratioLocked) viewModel.message(R.string.msg_ratio_fixed) else viewModel.cycleRatio() },
             )
             if (state.ready) {
                 CameraStrip(
@@ -266,6 +277,7 @@ fun CameraScreen(
                 onShutterSound = viewModel::setShutterSound,
                 onDateFormat = viewModel::setDateFormat,
                 onFrameOption = viewModel::setFrameOption,
+                onRatio = viewModel::setRatio,
                 onExifLocation = { on ->
                     when {
                         !on -> viewModel.setExifLocation(false)
@@ -285,11 +297,11 @@ fun CameraScreen(
 
 /** Date-stamp preview drawn by the real [DateStampRenderer] on a transparent bitmap (same look as the saved photo). */
 @Composable
-private fun produceDateStamp(enabled: Boolean, format: DateStampFormat, colorHex: String?, square: Boolean) =
-    produceState<ImageBitmap?>(null, enabled, format, colorHex, square) {
+private fun produceDateStamp(enabled: Boolean, format: DateStampFormat, colorHex: String?, aspect: Float) =
+    produceState<ImageBitmap?>(null, enabled, format, colorHex, aspect) {
         value = if (!enabled) null else withContext(Dispatchers.Default) {
             try {
-                val bmp = Bitmap.createBitmap(600, if (square) 600 else 800, Bitmap.Config.ARGB_8888)
+                val bmp = Bitmap.createBitmap(600, (600 / aspect).roundToInt(), Bitmap.Config.ARGB_8888)
                 val text = DateStampRenderer.text(LocalDate.now(), format)
                 DateStampRenderer.draw(bmp, text, UiMath.hexToRgb(colorHex ?: ""))
                 bmp.asImageBitmap()
