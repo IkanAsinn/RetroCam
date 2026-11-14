@@ -155,7 +155,7 @@ class RetroCameraController(context: Context) {
 
     fun setFlashMode(mode: FlashMode) {
         flashMode = mode
-        imageCapture?.flashMode = mode.toCameraX()
+        imageCapture?.let { applyFlashMode(it) }
     }
 
     /**
@@ -164,7 +164,22 @@ class RetroCameraController(context: Context) {
      */
     fun setScreenFlash(flash: ImageCapture.ScreenFlash?) {
         screenFlash = flash
-        imageCapture?.screenFlash = flash
+        val capture = imageCapture ?: return
+        // CameraX rejects FLASH_MODE_SCREEN without a ScreenFlash: drop to OFF before removing it, set it before re-enabling.
+        if (flash == null) applyFlashMode(capture)
+        capture.screenFlash = flash
+        if (flash != null) applyFlashMode(capture)
+    }
+
+    /** Sets the CameraX flash mode; screen flash only once a ScreenFlash is attached (otherwise OFF). */
+    private fun applyFlashMode(capture: ImageCapture) {
+        val mode = flashMode.toCameraX().let { if (it == ImageCapture.FLASH_MODE_SCREEN && screenFlash == null) ImageCapture.FLASH_MODE_OFF else it }
+        try {
+            capture.flashMode = mode
+        } catch (e: IllegalArgumentException) {
+            Log.w(TAG, "flash mode $mode rejected", e)
+            runCatching { capture.flashMode = ImageCapture.FLASH_MODE_OFF }
+        }
     }
 
     /** Clamped to the allowed range. May rebind (short preview blink) when crossing to a lens that zoom cannot reach. */
@@ -338,7 +353,7 @@ class RetroCameraController(context: Context) {
 
         val newCapture = ImageCapture.Builder()
             .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
-            .setFlashMode(flashMode.toCameraX())
+            .setFlashMode(flashMode.toCameraX().let { if (it == ImageCapture.FLASH_MODE_SCREEN) ImageCapture.FLASH_MODE_OFF else it })
             .setTargetRotation(targetRotation)
             .setResolutionSelector(
                 ResolutionSelector.Builder()
@@ -362,7 +377,8 @@ class RetroCameraController(context: Context) {
         if (aeLocked) applyAeLockOptions(cam, false)
         aeLocked = false
         preview = newPreview
-        newCapture.screenFlash = screenFlash
+        newCapture.screenFlash = screenFlash // before the screen flash mode, which CameraX rejects without it
+        applyFlashMode(newCapture)
         imageCapture = newCapture
         activeLens = lens
 
