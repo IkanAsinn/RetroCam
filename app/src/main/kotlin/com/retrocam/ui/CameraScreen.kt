@@ -54,7 +54,11 @@ import com.retrocam.gallery.GalleryViewModel
 import kotlin.math.roundToInt
 import com.retrocam.filmengine.DateStampFormat
 import com.retrocam.filmengine.DateStampRenderer
+import com.retrocam.camera.ExposureInfo
+import com.retrocam.logic.ExposureLogic
 import com.retrocam.logic.FrameSelection
+import com.retrocam.logic.Overlay
+import com.retrocam.logic.Overlays
 import com.retrocam.logic.UiMath
 import com.retrocam.filmengine.FrameFormat
 import kotlinx.coroutines.Dispatchers
@@ -86,10 +90,14 @@ fun CameraScreen(
     var showSettings by remember { mutableStateOf(false) }
     var showGallery by rememberSaveable { mutableStateOf(false) }
 
-    // Strength row: an overlay on the bottom edge of the viewfinder area (so the viewfinder never resizes).
-    // Hides on camera change and after 4 s without interaction; [strengthTouch] restarts that timer.
-    var strengthOpen by remember { mutableStateOf(false) }
-    var strengthTouch by remember { mutableIntStateOf(0) }
+    // Strength / exposure row: one overlay at a time on the bottom edge of the viewfinder area (so the viewfinder
+    // never resizes). Hides on camera change and after 4 s without interaction; [overlayTouch] restarts that timer.
+    var overlayRequest by remember { mutableStateOf(Overlay.NONE) }
+    var overlayTouch by remember { mutableIntStateOf(0) }
+    val toggleOverlay: (Overlay) -> Unit = { target ->
+        overlayRequest = Overlays.toggle(overlayRequest, target)
+        overlayTouch++
+    }
 
     // Camera follows the lifecycle: (re)bind every time the screen starts; CameraX releases it on stop.
     // While the gallery is open the camera is released; closing it re-runs this effect and binds again.
@@ -131,11 +139,11 @@ fun CameraScreen(
 
     // Camera-type name flashes briefly when the selection changes (not at startup).
     val selected = state.selected
-    LaunchedEffect(selected?.id) { strengthOpen = false }
-    LaunchedEffect(strengthOpen, strengthTouch) {
-        if (strengthOpen) {
-            delay(STRENGTH_AUTO_HIDE_MS)
-            strengthOpen = false
+    LaunchedEffect(selected?.id) { overlayRequest = Overlay.NONE }
+    LaunchedEffect(overlayRequest, overlayTouch) {
+        if (overlayRequest != Overlay.NONE) {
+            delay(OVERLAY_AUTO_HIDE_MS)
+            overlayRequest = Overlay.NONE
         }
     }
     val strengthPercent = state.settings.strengthFor(selected?.id)
@@ -170,6 +178,16 @@ fun CameraScreen(
     )
 
     val camera = state.camera
+    val exposure = camera?.exposure ?: ExposureInfo.UNSUPPORTED
+    val overlay = Overlays.visible(overlayRequest, state.ready, exposure.supported)
+    val exposureChip = if (exposure.supported && camera != null) {
+        ExposureChip(
+            value = ExposureLogic.format(exposure, camera.exposureIndex),
+            highlighted = camera.exposureIndex != 0 || camera.aeLocked || overlay == Overlay.EXPOSURE,
+        )
+    } else {
+        null
+    }
     val selectedStop = remember(camera?.zoomStops, camera?.zoomRatio) {
         camera?.let { UiMath.selectedStop(it.zoomStops, it.zoomRatio) } ?: -1
     }
@@ -188,10 +206,10 @@ fun CameraScreen(
                     onLeaks = viewModel::cycleLeaks,
                     onDate = viewModel::toggleDateStamp,
                     onTimer = viewModel::cycleTimer,
-                    onStrength = { strengthOpen = !strengthOpen; strengthTouch++ },
+                    onStrength = { toggleOverlay(Overlay.STRENGTH) },
                     onSettings = { showSettings = true },
                 ),
-                strengthOpen = strengthOpen,
+                strengthOpen = overlay == Overlay.STRENGTH,
                 modifier = Modifier.statusBarsPadding().padding(top = 4.dp),
             )
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -211,12 +229,27 @@ fun CameraScreen(
                         onSwipe = viewModel::selectRelative,
                         onCancelTimer = viewModel::cancelTimer,
                     ),
+                    aeLocked = camera?.aeLocked == true,
+                    onAeLockTap = viewModel::toggleAeLock,
                 )
-                if (strengthOpen && state.ready) {
+                if (overlay == Overlay.EXPOSURE && camera != null) {
+                    ExposureRow(
+                        info = exposure,
+                        index = camera.exposureIndex,
+                        onIndexChange = viewModel::setExposureIndex,
+                        aeLocked = camera.aeLocked,
+                        aeLockEnabled = ExposureLogic.aeLockAllowed(state.settings.flash, camera.hasFlashUnit),
+                        onToggleLock = viewModel::toggleAeLock,
+                        onInteraction = { overlayTouch++ },
+                        rotation = rotation,
+                        modifier = Modifier.align(Alignment.BottomCenter).padding(horizontal = 12.dp, vertical = 8.dp),
+                    )
+                }
+                if (overlay == Overlay.STRENGTH) {
                     StrengthRow(
                         percent = strengthPercent,
                         onChange = viewModel::setStrength,
-                        onInteraction = { strengthTouch++ },
+                        onInteraction = { overlayTouch++ },
                         rotation = rotation,
                         modifier = Modifier.align(Alignment.BottomCenter).padding(horizontal = 12.dp, vertical = 8.dp),
                     )
@@ -229,6 +262,8 @@ fun CameraScreen(
                 onSelect = { viewModel.setZoom(it.ratio) },
                 ratio = ratioChip,
                 onRatio = { if (ratioLocked) viewModel.message(R.string.msg_ratio_fixed) else viewModel.cycleRatio() },
+                exposure = exposureChip,
+                onExposure = { toggleOverlay(Overlay.EXPOSURE) },
             )
             if (state.ready) {
                 CameraStrip(
@@ -237,7 +272,7 @@ fun CameraScreen(
                     onSelect = { viewModel.selectCamera(state.profiles[it].id) },
                     rotation = rotation,
                     selectedStrengthPercent = strengthPercent,
-                    onSelectedTap = { strengthOpen = !strengthOpen; strengthTouch++ },
+                    onSelectedTap = { toggleOverlay(Overlay.STRENGTH) },
                 )
             } else {
                 Box(Modifier.fillMaxWidth().padding(top = 100.dp))
@@ -317,4 +352,4 @@ private fun appVersionName(context: android.content.Context): String = try {
     ""
 }
 
-private const val STRENGTH_AUTO_HIDE_MS = 4_000L
+private const val OVERLAY_AUTO_HIDE_MS = 4_000L

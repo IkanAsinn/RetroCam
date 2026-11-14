@@ -27,6 +27,7 @@ import com.retrocam.logic.StrengthMath
 import com.retrocam.profiles.CameraProfile
 import com.retrocam.profiles.EffectToggles
 import com.retrocam.profiles.LensKind
+import com.retrocam.logic.ExposureLogic
 import com.retrocam.profiles.ParamsMapper
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.FlowPreview
@@ -91,6 +92,12 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
     private val _profiles = MutableStateFlow<List<CameraProfile>>(emptyList())
     private val _transient = MutableStateFlow(Transient())
     private val bound = MutableStateFlow(false)
+
+    /**
+     * Exposure compensation the user chose, in EV. Session-only on purpose: not in [Settings], so it resets to 0
+     * on a fresh launch but survives camera-type switches, facing switches and the gallery.
+     */
+    private val exposureEv = MutableStateFlow(0f)
     private val events = Channel<UiEvent>(Channel.BUFFERED)
 
     private val gate = ShutterGate()
@@ -199,6 +206,10 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
                 }
         }
         viewModelScope.launch {
+            // The controller re-applies the EV after every rebind itself; this covers the very first bind.
+            bound.collect { b -> if (b) safely { controller.setExposureEv(exposureEv.value) } }
+        }
+        viewModelScope.launch {
             combine(bound, _settings.map { it.zoomUnlocked }.distinctUntilChanged()) { b, u -> if (b) u else null }
                 .collect { u -> if (u != null) safely { controller.setFullZoomUnlocked(u) } }
         }
@@ -267,7 +278,15 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     fun cycleFlash() {
-        if (controller.state.value?.hasFlashUnit == true) update { it.copy(flash = it.flash.cycleNext()) }
+        val cam = controller.state.value
+        if (cam?.hasFlashUnit != true) return
+        val next = _settings.value.flash.cycleNext()
+        // A locked AE fights the flash's pre-capture metering: turning the flash on releases the lock.
+        if (cam.aeLocked && !ExposureLogic.aeLockAllowed(next, true)) {
+            safely { controller.setAeLocked(false) }
+            message(R.string.msg_ae_lock_released_flash)
+        }
+        update { it.copy(flash = next) }
     }
     fun cycleGrain() = update { it.copy(grain = it.grain.cycleNext()) }
     fun cycleFlare() = update { it.copy(flare = it.flare.cycleNext()) }
@@ -287,6 +306,32 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
         val target = if (cam.facing == Facing.BACK) Facing.FRONT else Facing.BACK
         val available = if (target == Facing.FRONT) cam.hasFront else cam.hasBack
         if (available) update { it.copy(facing = target) }
+    }
+
+    // ---------------------------------------------------------------- exposure
+
+    /** Slider moved to [index] of the bound camera's range (clamped). */
+    fun setExposureIndex(index: Int) {
+        val info = controller.state.value?.exposure?.takeIf { it.supported } ?: return
+        val ev = ExposureLogic.evForIndex(info, index)
+        exposureEv.value = ev
+        safely { controller.setExposureEv(ev) }
+    }
+
+    fun resetExposure() = setExposureIndex(0)
+
+    /** AE lock on/off. Refused (with a message) while the flash is ON or AUTO. */
+    fun toggleAeLock() {
+        val cam = controller.state.value ?: return
+        if (cam.aeLocked) {
+            safely { controller.setAeLocked(false) }
+            return
+        }
+        if (!ExposureLogic.aeLockAllowed(_settings.value.flash, cam.hasFlashUnit)) {
+            message(R.string.msg_ae_lock_flash)
+            return
+        }
+        safely { controller.setAeLocked(true) }
     }
 
     // ---------------------------------------------------------------- viewfinder gestures

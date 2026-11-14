@@ -21,7 +21,32 @@ data class CameraUiState(
     val maxZoom: Float,
     val zoomStops: List<ZoomStop>,
     val lensKind: ActiveLens,
+    /** Exposure compensation capabilities of the bound camera; [ExposureInfo.supported] is false when unavailable. */
+    val exposure: ExposureInfo = ExposureInfo.UNSUPPORTED,
+    /** Exposure compensation index currently applied (already clamped to [exposure]'s range). */
+    val exposureIndex: Int = 0,
+    /** True while auto exposure (and white balance) is locked. */
+    val aeLocked: Boolean = false,
 )
+
+/**
+ * Exposure-compensation capabilities: index range and step size in EV per index (CameraX reports the step as a
+ * Rational, e.g. 1/3 or 1/2). Pure data and maths so it is JVM-testable.
+ */
+data class ExposureInfo(val supported: Boolean, val minIndex: Int, val maxIndex: Int, val stepEv: Float) {
+    /** EV for an index (index * step). */
+    fun evFor(index: Int): Float = index * stepEv
+
+    /** Nearest in-range index for [ev]; 0 when unsupported. */
+    fun indexFor(ev: Float): Int {
+        if (!supported || stepEv <= 0f) return 0
+        return Math.round(ev / stepEv).coerceIn(minIndex, maxIndex)
+    }
+
+    companion object {
+        val UNSUPPORTED = ExposureInfo(false, 0, 0, 0f)
+    }
+}
 
 /** Upright bitmap (sensor rotation already applied, front camera NOT mirrored). */
 data class CapturedFrame(

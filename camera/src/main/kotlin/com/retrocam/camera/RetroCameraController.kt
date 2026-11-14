@@ -4,11 +4,13 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Matrix
 import android.graphics.Rect
+import android.hardware.camera2.CaptureRequest
 import android.util.Log
 import android.util.Size
 import android.view.Surface
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraEffect
+import androidx.camera.core.CameraControl
 import androidx.camera.core.CameraInfoUnavailableException
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.FlashState
@@ -24,6 +26,9 @@ import androidx.camera.core.ZoomState
 import androidx.camera.core.resolutionselector.AspectRatioStrategy
 import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.core.resolutionselector.ResolutionStrategy
+import androidx.camera.camera2.interop.Camera2CameraControl
+import androidx.camera.camera2.interop.CaptureRequestOptions
+import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
@@ -46,7 +51,6 @@ import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executor
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -90,6 +94,10 @@ class RetroCameraController(context: Context) {
     private var hasFront = false
     private var hasBack = false
     private var desiredZoom = 1f
+    private var desiredEv = 0f // user's exposure compensation in EV; re-applied (clamped) after every bind
+    private var aeLocked = false
+    private var exposureInfo = ExposureInfo.UNSUPPORTED
+    private var exposureIndex = 0
 
     // Bound state.
     private var camera: Camera? = null
@@ -177,13 +185,51 @@ class RetroCameraController(context: Context) {
             // The viewfinder mirrors the front camera; metering works on the unmirrored buffer.
             val px = if (facing == Facing.FRONT) width - x else x
             val point = factory.createPoint(px.coerceIn(0f, width), y.coerceIn(0f, height))
-            val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE)
-                .setAutoCancelDuration(3, TimeUnit.SECONDS)
+            // Focus and exposure stay on the tapped point until the next tap or rebind (no auto-cancel, so the
+            // brightness does not jump back to default metering). While AE is locked only refocus, or the lock breaks.
+            val flags = if (aeLocked) FocusMeteringAction.FLAG_AF else FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE
+            val action = FocusMeteringAction.Builder(point, flags)
+                .disableAutoCancel()
                 .build()
             if (cam.cameraInfo.isFocusMeteringSupported(action)) cam.cameraControl.startFocusAndMetering(action)
         } catch (t: Exception) {
             Log.w(TAG, "focusAt failed", t)
         }
+    }
+
+    /**
+     * Exposure compensation in EV (applies to preview and capture; CameraX puts it in both request types).
+     * Remembered across rebinds and clamped to the bound camera's range. Superseded calls are swallowed.
+     */
+    fun setExposureEv(ev: Float) {
+        desiredEv = ev
+        if (camera != null) {
+            applyExposure()
+            publishState()
+        }
+    }
+
+    /** Same as [setExposureEv] with a raw index of the bound camera, clamped to its range. */
+    fun setExposureIndex(index: Int) {
+        val info = exposureInfo
+        if (!info.supported) return
+        setExposureEv(info.evFor(index.coerceIn(info.minIndex, info.maxIndex)))
+    }
+
+    /**
+     * Locks (or unlocks) auto exposure and auto white balance so brightness stops drifting. Compensation is sent
+     * first, then the lock, so the locked value is the one the user chose. Released on every rebind (camera, facing,
+     * lens change, resume); the caller keeps its own switch in sync via [state].
+     * Behaviour with EV changes while locked is device-dependent: many Camera2 HALs keep applying compensation to
+     * a locked AE, others ignore it until unlock.
+     */
+    @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
+    fun setAeLocked(locked: Boolean) {
+        val cam = camera ?: return
+        aeLocked = locked
+        if (locked) applyExposure()
+        applyAeLockOptions(cam, locked)
+        publishState()
     }
 
     /** Surface.ROTATION_*; applies to captures only (the preview stays sensor-locked). */
@@ -294,6 +340,9 @@ class RetroCameraController(context: Context) {
         val cam = p.bindToLifecycle(owner, selector, group.build())
 
         camera = cam
+        // A fresh camera session starts unlocked; the Camera2 interop options can outlive unbindAll, so clear them.
+        if (aeLocked) applyAeLockOptions(cam, false)
+        aeLocked = false
         preview = newPreview
         imageCapture = newCapture
         activeLens = lens
@@ -323,7 +372,64 @@ class RetroCameraController(context: Context) {
         zoomObserver = obs
         zoomLive = live
         live.observeForever(obs)
+        applyExposure()
         publishState()
+    }
+
+    /** Reads the bound camera's ExposureState, clamps [desiredEv] into it and sends it to CameraControl. */
+    private fun applyExposure() {
+        val cam = camera ?: return
+        val es = cam.cameraInfo.exposureState
+        val step = es.exposureCompensationStep.toFloat()
+        val range = es.exposureCompensationRange
+        val info = if (es.isExposureCompensationSupported && step > 0f) {
+            ExposureInfo(true, range.lower, range.upper, step)
+        } else {
+            ExposureInfo.UNSUPPORTED
+        }
+        exposureInfo = info
+        if (!info.supported) {
+            exposureIndex = 0
+            return
+        }
+        val index = info.indexFor(desiredEv)
+        exposureIndex = index
+        try {
+            cam.cameraControl.setExposureCompensationIndex(index).swallowCancellation("setExposureCompensationIndex")
+        } catch (t: Exception) {
+            Log.w(TAG, "setExposureCompensationIndex failed", t)
+        }
+    }
+
+    @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
+    private fun applyAeLockOptions(cam: Camera, locked: Boolean) {
+        try {
+            val options = CaptureRequestOptions.Builder()
+                .setCaptureRequestOption(CaptureRequest.CONTROL_AE_LOCK, locked)
+                .setCaptureRequestOption(CaptureRequest.CONTROL_AWB_LOCK, locked)
+                .build()
+            Camera2CameraControl.from(cam.cameraControl).setCaptureRequestOptions(options)
+                .swallowCancellation("AE lock")
+        } catch (t: Exception) {
+            Log.w(TAG, "AE lock failed", t)
+            aeLocked = false
+        }
+    }
+
+    /** Superseded / cancelled camera operations are normal (a newer call replaced this one): ignore them quietly. */
+    private fun ListenableFuture<*>.swallowCancellation(what: String) {
+        addListener(
+            {
+                try {
+                    get()
+                } catch (_: CancellationException) {
+                } catch (e: ExecutionException) {
+                    if (e.cause !is CameraControl.OperationCanceledException) Log.w(TAG, "$what failed", e.cause ?: e)
+                } catch (_: Exception) {
+                }
+            },
+            mainExecutor,
+        )
     }
 
     private fun detachZoomObserver() {
@@ -406,6 +512,9 @@ class RetroCameraController(context: Context) {
             maxZoom = max,
             zoomStops = stops,
             lensKind = lensKind,
+            exposure = exposureInfo,
+            exposureIndex = exposureIndex,
+            aeLocked = aeLocked,
         )
     }
 
