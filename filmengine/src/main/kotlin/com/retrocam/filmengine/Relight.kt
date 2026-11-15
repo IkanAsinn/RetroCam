@@ -184,9 +184,9 @@ object IllumMapper {
 
 object RelightMath {
     // ---- tuning (shared with the shader) ----
-    const val ILLUM_FLOOR = 0.02f      // illumination below this counts as this (no divide-by-zero, no night-time blow-up)
+    const val ILLUM_FLOOR = 0.05f      // illumination below this counts as this (no divide-by-zero, no night-time blow-up)
     const val CHROMA_KEEP = 1.0f      // 1 = per-channel illumination (full ambient white-balance pull), 0 = luminance only
-    const val ALBEDO_MAX = 2.5f
+    const val ALBEDO_MAX = 1.7f
     const val COVER_DROP = 0.3f        // corner fall-off of the small flash's coverage
     const val SHOULDER_KNEE = 0.5f    // highlight roll-off starts here (linear)
     const val ROLL_DESAT = 0.4f        // rolled-off highlights lose this much saturation

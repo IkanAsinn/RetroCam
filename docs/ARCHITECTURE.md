@@ -108,7 +108,7 @@ Shader additions (mirrored in `FilmMath`, the CPU reference):
   1. `FlashAnalyzer` (Android) downsamples the frame once (halving steps to 320 px); `IllumMapper` (pure) box-downsamples to
      a 96 px long-side map in linear light and blurs it edge-aware (bilateral on ln-luma, sigma 12 % of the long side) = ambient
      illumination estimate `ill`, uploaded as an RGB8 texture (`uIllum`, unit 2, gamma encoded, linear filter).
-  2. Reflectance `alb = min(lin / max(ill, 0.02), 2.5)` (Retinex), per channel so the ambient colour cast is divided out.
+  2. Reflectance `alb = min(lin / max(ill, 0.05), 1.7)` (Retinex), per channel so the ambient colour cast is divided out; the raised floor and low cap keep it from amplifying sensor noise / JPEG banding in deep shadows.
   3. Light `L = (1/(1+d^2))^2 * coverage(r)`, `d` = distance from `FlashSubject` / (radius * profile reach); `coverage` is the
      small flash's corner fall-off (1 - 0.3 * smoothstep(0.55, 1.1, r)). Subject: `android.media.FaceDetector` on a downscaled
      RGB_565 copy (try/catch, no faces on any failure) -> `FlashSubject.fromFaces` (centre pulled 65 % toward the faces,
@@ -118,7 +118,7 @@ Shader additions (mirrored in `FilmMath`, the CPU reference):
      reflectance; background drops because only the ambient term remains there; flash-lit areas move toward the flash colour
      (neutral-ish) while the unlit background keeps its warm ambient.
   5. Scene adaptation: `strength` and `drop` are scaled by `smoothstep(0.02, 0.30, meanLinearLuma)` down to 0.3 / 0.35 for bright scenes.
-  6. Per-profile flavour (`ParamsMapper.relightLook`, from the flash spec): `strength = (0.22 + 0.4 * spec.strength) * 2^(-2.5 * exposureEv)`
+  6. Per-profile flavour (`ParamsMapper.relightLook`, from the flash spec): `strength = (0.176 + 0.32 * spec.strength) * 2^(-3.5 * exposureEv)`
      (capped at 1 for brightened profiles), `ambientDrop = spec.backgroundDrop`, `reach = 1.3 .. 0.9` by `spec.falloff`
      (disposables / Instax punchy), kelvin from the spec, no gel. Profiles without a flash spec get a gentle default.
   Pipeline: `ParamsMapper.toFilmParams(..., filmFlash = true)` also applies the flash tint as if `flashActive`; `CapturePipeline`

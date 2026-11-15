@@ -101,9 +101,9 @@ object ParamsMapper {
     }
 
     // Film flash flavour: disposables / instant cameras (strong falloff, strong background drop) look punchy, others gentle.
-    private const val RELIGHT_BASE = 0.22f
-    private const val RELIGHT_GAIN = 0.4f      // strength = BASE + GAIN * spec.strength
-    private const val RELIGHT_EXPOSURE_COMP = 2.5f // strength *= 2^(-COMP * exposureEv) for brightened profiles
+    private const val RELIGHT_BASE = 0.176f
+    private const val RELIGHT_GAIN = 0.32f      // strength = BASE + GAIN * spec.strength
+    private const val RELIGHT_EXPOSURE_COMP = 3.5f // strength *= 2^(-COMP * exposureEv) for brightened profiles
     private const val RELIGHT_REACH_GENTLE = 1.3f
     private const val RELIGHT_REACH_PUNCHY = 0.9f
     private const val RELIGHT_DROP_GAIN = 1.0f  // ambient drop = spec.backgroundDrop * GAIN
