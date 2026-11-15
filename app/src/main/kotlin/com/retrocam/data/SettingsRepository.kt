@@ -18,6 +18,7 @@ private val Context.settingsStore: DataStore<Preferences> by preferencesDataStor
 private object Keys {
     val cameraId = stringPreferencesKey("camera_id")
     val flash = stringPreferencesKey("flash")
+    val filmFlash = booleanPreferencesKey("film_flash")
     val grain = stringPreferencesKey("grain")
     val flare = stringPreferencesKey("flare")
     val leaks = stringPreferencesKey("leaks")
@@ -34,6 +35,8 @@ private object Keys {
     val strengthPercent = stringPreferencesKey("strength_pct")
 }
 
+private const val LEGACY_FILM_FLASH = "FILM"
+
 private inline fun <reified E : Enum<E>> Preferences.enumOr(key: Preferences.Key<String>, default: E): E {
     val name = this[key] ?: return default
     return enumValues<E>().firstOrNull { it.name == name } ?: default
@@ -44,7 +47,8 @@ fun Preferences.toSettings(): Settings {
     val d = Settings()
     return Settings(
         cameraId = this[Keys.cameraId],
-        flash = enumOr(Keys.flash, d.flash),
+        flash = enumOr(Keys.flash, d.flash), // a v0.7 "FILM" is not a FlashMode any more: unknown -> OFF
+        filmFlash = this[Keys.filmFlash] ?: (this[Keys.flash] == LEGACY_FILM_FLASH), // v0.7 stored the film flash as flash mode FILM
         grain = enumOr(Keys.grain, d.grain),
         flare = enumOr(Keys.flare, d.flare),
         leaks = enumOr(Keys.leaks, d.leaks),
@@ -66,6 +70,7 @@ fun MutablePreferences.writeSettings(s: Settings) {
     val id = s.cameraId
     if (id == null) remove(Keys.cameraId) else this[Keys.cameraId] = id
     this[Keys.flash] = s.flash.name
+    this[Keys.filmFlash] = s.filmFlash
     this[Keys.grain] = s.grain.name
     this[Keys.flare] = s.flare.name
     this[Keys.leaks] = s.leaks.name

@@ -70,7 +70,7 @@ object ParamsMapper {
             edgeSoftness = (profile.edgeSoftness * scale.edgeSoftness).coerceIn(0f, 1f),
             // Film flash (capture only) also gets the flash colour tint, as if the flash had fired.
             flash = flashLook(profile, flashActive || filmFlash, seed),
-            relight = if (filmFlash) relightLook(profile) else null,
+            relight = if (filmFlash) relightLook(profile, stackedWithFlash = flashActive) else null,
             flare = flareLook(profile, toggles.flare, brightHighlight, seed, highlightX, highlightY),
             leak = leakLook(profile, toggles.leaks, seed),
             colorShift = colorShift(profile, seed),
@@ -108,8 +108,21 @@ object ParamsMapper {
     private const val RELIGHT_REACH_PUNCHY = 0.9f
     private const val RELIGHT_DROP_GAIN = 1.0f  // ambient drop = spec.backgroundDrop * GAIN
 
-    /** Film-flash look from the profile's flash spec; profiles without one (Aqua, Plastic 120) get a gentle default. */
-    fun relightLook(profile: CameraProfile): RelightLook {
+    // Stacking with a real (or screen) flash that already fired: the frame is already flash-lit, so the relight is scaled
+    // down (x0.55) and its ambient drop is skipped (the real flash look's own backgroundDrop already darkens the
+    // background; applying both would crush it twice). The flash colour tint is applied once by flashLook().
+    const val STACKED_STRENGTH_FACTOR = 0.55f
+
+    /**
+     * Film-flash look from the profile's flash spec; profiles without one (Aqua, Plastic 120) get a gentle default.
+     * [stackedWithFlash] = a real flash already fired in this frame.
+     */
+    fun relightLook(profile: CameraProfile, stackedWithFlash: Boolean = false): RelightLook {
+        val look = baseRelightLook(profile)
+        return if (stackedWithFlash) look.copy(strength = look.strength * STACKED_STRENGTH_FACTOR, ambientDrop = 0f) else look
+    }
+
+    private fun baseRelightLook(profile: CameraProfile): RelightLook {
         // Profiles that already brighten the exposure (Instax +0.2 EV and a bright LUT) get less flash so faces do not clip.
         val headroom = Math.pow(2.0, -RELIGHT_EXPOSURE_COMP * profile.exposureEv.coerceIn(-1f, 1f).toDouble()).toFloat().coerceAtMost(1f)
         val spec = profile.flash

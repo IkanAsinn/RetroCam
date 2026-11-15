@@ -11,7 +11,8 @@
 
     <!-- Top bar: descriptions (also used as long-press labels) -->
     <string name="desc_flash">Flash: %1$s</string>
-    <string name="desc_flash_film">Film flash — added when the photo is developed</string>
+    <string name="desc_flash_unavailable">Flash: not available on this camera</string>
+    <string name="desc_film_flash">Film flash — adds a flash look when the photo is developed</string>
     <string name="desc_grain">Film grain: %1$s</string>
     <string name="desc_flare">Lens flare: %1$s</string>
     <string name="desc_leaks">Light leaks: %1$s</string>
@@ -28,7 +29,6 @@
     <string name="state_off">off</string>
     <string name="state_on">on</string>
     <string name="state_auto">auto</string>
-    <string name="state_film">film flash</string>
     <string name="state_low">low</string>
     <string name="state_normal">normal</string>
     <string name="state_high">high</string>
@@ -41,7 +41,6 @@
     <!-- Short badges under the top-bar icons -->
     <string name="badge_on">ON</string>
     <string name="badge_auto">AUTO</string>
-    <string name="badge_film">FILM</string>
     <string name="badge_low">LOW</string>
     <string name="badge_normal">MID</string>
     <string name="badge_high">HIGH</string>

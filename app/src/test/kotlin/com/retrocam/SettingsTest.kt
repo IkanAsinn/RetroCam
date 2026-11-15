@@ -1,5 +1,6 @@
 package com.retrocam
 
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.mutablePreferencesOf
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -63,16 +64,36 @@ class SettingsTest {
     }
 
     @Test
-    fun filmFlashRoundTripsAndUnknownFlashFallsBackToOff() {
-        val s = Settings(flash = FlashMode.FILM)
-        assertEquals(s, mutablePreferencesOf().also { it.writeSettings(s) }.toSettings())
-        assertEquals("FILM", mutablePreferencesOf().also { it.writeSettings(s) }[stringPreferencesKey("flash")])
-        assertEquals(FlashMode.OFF, mutablePreferencesOf(stringPreferencesKey("flash") to "DISCO").toSettings().flash)
+    fun filmFlashIsIndependentOfFlashAndRoundTrips() {
+        assertFalse(Settings().filmFlash)
+        for (flash in FlashMode.entries) {
+            val s = Settings(flash = flash, filmFlash = true)
+            assertEquals(s, mutablePreferencesOf().also { it.writeSettings(s) }.toSettings())
+        }
+        assertEquals(Settings(), mutablePreferencesOf().also { it.writeSettings(Settings()) }.toSettings())
+    }
+
+    @Test
+    fun legacyFilmFlashModeMigratesToFlashOffPlusFilmFlash() {
+        val flashKey = stringPreferencesKey("flash")
+        val s = mutablePreferencesOf(flashKey to "FILM").toSettings() // v0.7 store
+        assertEquals(FlashMode.OFF, s.flash)
+        assertTrue(s.filmFlash)
+        // once saved, the new key wins and the legacy value is gone
+        val saved = mutablePreferencesOf().also { it.writeSettings(s) }
+        assertEquals("OFF", saved[flashKey])
+        assertTrue(saved.toSettings().filmFlash)
+        // an explicit film_flash = false is not overridden
+        assertFalse(mutablePreferencesOf(flashKey to "ON", booleanPreferencesKey("film_flash") to false).toSettings().filmFlash)
+        // unknown values fall back safely
+        val unknown = mutablePreferencesOf(flashKey to "DISCO").toSettings()
+        assertEquals(FlashMode.OFF, unknown.flash)
+        assertFalse(unknown.filmFlash)
     }
 
     @Test
     fun cycleOrderOfEveryToggle() {
-        assertEquals(listOf(FlashMode.AUTO, FlashMode.ON, FlashMode.FILM, FlashMode.OFF), cycle(FlashMode.OFF, 4))
+        assertEquals(listOf(FlashMode.AUTO, FlashMode.ON, FlashMode.OFF), cycle(FlashMode.OFF, 3))
         assertEquals(listOf(GrainLevel.LOW, GrainLevel.NORMAL, GrainLevel.HIGH, GrainLevel.OFF), cycle(GrainLevel.OFF, 4))
         assertEquals(listOf(FlareMode.AUTO, FlareMode.ALWAYS, FlareMode.OFF), cycle(FlareMode.OFF))
         assertEquals(listOf(LeakMode.SUBTLE, LeakMode.STRONG, LeakMode.OFF), cycle(LeakMode.OFF))

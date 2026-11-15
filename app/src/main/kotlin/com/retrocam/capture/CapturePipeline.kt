@@ -14,7 +14,6 @@ import com.retrocam.filmengine.FlashAnalyzer
 import com.retrocam.filmengine.Highlight
 import com.retrocam.filmengine.IllumMap
 import com.retrocam.filmengine.OffscreenFilmRenderer
-import com.retrocam.logic.FlashLogic
 import com.retrocam.logic.FrameSelection
 import com.retrocam.logic.LensMapping
 import com.retrocam.logic.MirrorLogic
@@ -66,7 +65,7 @@ class CapturePipeline(
                 brightHighlight = shot.highlight != null,
                 highlightX = shot.highlight?.x,
                 highlightY = shot.highlight?.y,
-                filmFlash = FlashLogic.isFilm(shot.settings.flash),
+                filmFlash = shot.settings.filmFlash, // independent of the real flash; stacks with it (see ParamsMapper.relightLook)
             ).copy(strength = StrengthMath.toStrength(shot.settings.strengthFor(shot.profile.id))) // same strength as the preview
             // Film flash: look for faces and the ambient light on a small copy; any failure just skips the simulated flash.
             var illum: IllumMap? = null

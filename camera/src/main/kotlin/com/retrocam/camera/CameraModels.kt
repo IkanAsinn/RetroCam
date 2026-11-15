@@ -4,8 +4,7 @@ import android.graphics.Bitmap
 
 enum class Facing { BACK, FRONT }
 
-/** FILM = simulated "film flash" added only when the photo is developed; the camera itself never fires any flash for it. */
-enum class FlashMode { OFF, AUTO, ON, FILM }
+enum class FlashMode { OFF, AUTO, ON }
 
 enum class ActiveLens { ULTRA_WIDE, MAIN, TELE, FRONT }
 

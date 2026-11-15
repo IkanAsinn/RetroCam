@@ -69,6 +69,5 @@ class ExposureLogicTest {
         assertFalse(ExposureLogic.aeLockAllowed(FlashMode.AUTO, true))
         assertFalse(ExposureLogic.aeLockAllowed(FlashMode.ON, true))
         assertTrue(ExposureLogic.aeLockAllowed(FlashMode.ON, false))
-        assertTrue(ExposureLogic.aeLockAllowed(FlashMode.FILM, true)) // simulated, not a real flash
     }
 }

@@ -61,6 +61,7 @@ import com.retrocam.ui.theme.RetroColors
 
 class TopBarActions(
     val onFlash: () -> Unit,
+    val onFilmFlash: () -> Unit,
     val onGrain: () -> Unit,
     val onFlare: () -> Unit,
     val onLeaks: () -> Unit,
@@ -70,7 +71,7 @@ class TopBarActions(
     val onSettings: () -> Unit,
 )
 
-/** Flash, grain, flare, light leak, date stamp, timer: each cycles on tap, long-press shows its label. */
+/** Flash, film flash, grain, flare, light leak, date stamp, timer: each cycles on tap, long-press shows its label. */
 @Composable
 fun TopBar(
     state: CameraScreenState,
@@ -81,7 +82,7 @@ fun TopBar(
 ) {
     val s = state.settings
     val facing = state.camera?.facing ?: Facing.BACK
-    val hasFlash = FlashLogic.toggleEnabled() // FILM needs no flash hardware
+    val hasFlash = state.camera?.let { FlashLogic.available(it.facing, it.hasFlashUnit) } == true
     val flashMode = FlashLogic.displayMode(s.flash, facing, state.camera?.hasFlashUnit ?: true)
     val off = stringResource(R.string.state_off)
 
@@ -89,7 +90,6 @@ fun TopBar(
         FlashMode.OFF -> off
         FlashMode.AUTO -> stringResource(R.string.state_auto)
         FlashMode.ON -> stringResource(R.string.state_on)
-        FlashMode.FILM -> stringResource(R.string.state_film)
     }
     val grainState = when (s.grain) {
         GrainLevel.OFF -> off
@@ -115,7 +115,7 @@ fun TopBar(
     }
 
     BoxWithConstraints(modifier.fillMaxWidth()) {
-        // 8 equal slots must stay at least a usable touch width; narrower screens scroll instead of dropping toggles.
+        // 9 equal slots must stay at least a usable touch width; narrower screens scroll instead of dropping toggles.
         val compact = maxWidth / TOGGLE_COUNT < MIN_SLOT_WIDTH
         val rowModifier = Modifier.fillMaxWidth().let { if (compact) it.horizontalScroll(rememberScrollState()) else it }
         Row(modifier = rowModifier, verticalAlignment = Alignment.CenterVertically) {
@@ -124,20 +124,27 @@ fun TopBar(
                 FlashMode.OFF -> Icons.Outlined.FlashOff
                 FlashMode.AUTO -> Icons.Outlined.FlashAuto
                 FlashMode.ON -> Icons.Outlined.FlashOn
-                FlashMode.FILM -> Icons.Outlined.AutoAwesome
             },
-            description = if (flashMode == FlashMode.FILM) stringResource(R.string.desc_flash_film) else stringResource(R.string.desc_flash, flashState),
+            description = if (hasFlash) stringResource(R.string.desc_flash, flashState) else stringResource(R.string.desc_flash_unavailable),
             badge = when (flashMode) {
                 FlashMode.OFF -> null
                 FlashMode.AUTO -> stringResource(R.string.badge_auto)
                 FlashMode.ON -> stringResource(R.string.badge_on)
-                FlashMode.FILM -> stringResource(R.string.badge_film)
             },
             active = hasFlash && flashMode != FlashMode.OFF,
             enabled = hasFlash,
             rotation = rotation,
             compact = compact,
             onClick = actions.onFlash,
+        )
+        TopToggle(
+            icon = Icons.Outlined.AutoAwesome,
+            description = stringResource(R.string.desc_film_flash),
+            badge = if (s.filmFlash) stringResource(R.string.badge_on) else null,
+            active = s.filmFlash,
+            rotation = rotation,
+            compact = compact,
+            onClick = actions.onFilmFlash,
         )
         TopToggle(
             icon = Icons.Outlined.Grain,
@@ -277,5 +284,5 @@ private fun RowScope.TopToggle(
     }
 }
 
-private const val TOGGLE_COUNT = 8
-private val MIN_SLOT_WIDTH = 44.dp
+private const val TOGGLE_COUNT = 9
+private val MIN_SLOT_WIDTH = 40.dp // 9 x 40dp = 360dp: every toggle fits a 360dp phone; narrower screens scroll

@@ -108,6 +108,22 @@ class ParamsMapperTest {
         assertNull(ParamsMapper.toFilmParams(p("gold_snap"), normal, LensKind.MAIN, true, 42, false).relight) // a real flash is not a film flash
     }
 
+    @Test fun filmFlashStacksWithARealFlashGentlyAndTintsOnce() {
+        fun map(id: String, flashFired: Boolean, film: Boolean) =
+            ParamsMapper.toFilmParams(p(id), normal, LensKind.MAIN, flashFired, 42, false, null, null, film)
+        for (id in listOf("gold_snap", "studio_400", "aqua")) {
+            val alone = map(id, false, true)
+            val stacked = map(id, true, true)
+            assertNotNull(stacked.relight)
+            assertEquals(alone.relight!!.strength * ParamsMapper.STACKED_STRENGTH_FACTOR, stacked.relight!!.strength, 1e-6f)
+            assertEquals("duplicate background drop is skipped", 0f, stacked.relight!!.ambientDrop, 0f)
+            assertEquals(alone.relight!!.reach, stacked.relight!!.reach, 0f)
+            assertEquals("flash tint applied once, identical to a real flash", map(id, true, false).flash, stacked.flash)
+            assertNull("real flash alone adds no relight", map(id, true, false).relight)
+        }
+        assertTrue(map("gold_snap", false, true).relight!!.ambientDrop > 0f)
+    }
+
     @Test fun filmFlashFlavourDisposablesPunchierThanGentleProfiles() {
         val disposable = ParamsMapper.relightLook(p("gold_snap"))
         val gentle = ParamsMapper.relightLook(p("studio_400"))
