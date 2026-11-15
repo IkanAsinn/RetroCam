@@ -94,13 +94,14 @@
     <string name="exposure_state">%1$s EV</string>
     <string name="cd_exposure_value">Exposure %1$s EV. Double-tap to reset to zero.</string>
     <string name="cd_exposure_reset">Reset exposure to zero</string>
-    <string name="ae_lock_label">AE lock</string>
-    <string name="cd_ae_lock_off">Auto exposure lock is off. Tap to lock.</string>
-    <string name="cd_ae_lock_on">Auto exposure lock is on. Tap to unlock.</string>
-    <string name="ae_lock_indicator">AE LOCK</string>
-    <string name="cd_ae_lock_indicator">Auto exposure locked. Tap to unlock.</string>
-    <string name="msg_ae_lock_flash">AE lock is not available while the flash is on or auto</string>
-    <string name="msg_ae_lock_released_flash">Flash on: AE lock released</string>
+    <string name="ae_lock_label">AE/AF lock</string>
+    <string name="cd_ae_lock_off">AE/AF lock is off. Tap to lock.</string>
+    <string name="cd_ae_lock_on">AE/AF lock is on. Tap to unlock.</string>
+    <string name="ae_lock_indicator">AE/AF LOCK</string>
+    <string name="cd_ae_lock_indicator">Auto exposure and focus locked. Tap to unlock.</string>
+    <string name="msg_ae_lock_flash">AE/AF lock is not available while the flash is on or auto</string>
+    <string name="cd_focus_slider">Exposure slider on the focus point</string>
+    <string name="msg_ae_lock_released_flash">Flash on: AE/AF lock released</string>
 
     <!-- Messages -->
     <string name="msg_preview_error">The film preview ran into a problem.</string>

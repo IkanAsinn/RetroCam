@@ -58,6 +58,7 @@ import com.retrocam.filmengine.DateStampRenderer
 import com.retrocam.camera.ExposureInfo
 import com.retrocam.logic.ExposureLogic
 import com.retrocam.logic.FlashLogic
+import com.retrocam.logic.FocusRingLogic
 import com.retrocam.logic.FrameSelection
 import com.retrocam.logic.Overlay
 import com.retrocam.logic.Overlays
@@ -244,9 +245,16 @@ fun CameraScreen(
                         onPinchEnd = viewModel::onPinchEnd,
                         onSwipe = viewModel::selectRelative,
                         onCancelTimer = viewModel::cancelTimer,
+                        onExposureIndex = viewModel::setExposureIndex,
+                        onLongPressFocus = viewModel::focusAndLockAt,
                     ),
                     aeLocked = camera?.aeLocked == true,
                     onAeLockTap = viewModel::toggleAeLock,
+                    exposure = exposure,
+                    exposureIndex = camera?.exposureIndex ?: 0,
+                    lockEnabled = camera != null &&
+                        FocusRingLogic.lockAllowed(state.settings.flash, camera.facing, camera.hasFlashUnit),
+                    ringResetKey = selected?.id to camera?.facing,
                 )
                 if (overlay == Overlay.EXPOSURE && camera != null) {
                     ExposureRow(

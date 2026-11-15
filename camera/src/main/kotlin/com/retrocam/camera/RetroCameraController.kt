@@ -15,6 +15,7 @@ import androidx.camera.core.CameraInfoUnavailableException
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.FlashState
 import androidx.camera.core.FocusMeteringAction
+import androidx.camera.core.FocusMeteringResult
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
@@ -26,7 +27,9 @@ import androidx.camera.core.ZoomState
 import androidx.camera.core.resolutionselector.AspectRatioStrategy
 import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.core.resolutionselector.ResolutionStrategy
+import android.hardware.camera2.CameraCharacteristics
 import androidx.camera.camera2.interop.Camera2CameraControl
+import androidx.camera.camera2.interop.Camera2CameraInfo
 import androidx.camera.camera2.interop.CaptureRequestOptions
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -202,8 +205,37 @@ class RetroCameraController(context: Context) {
 
     /** x, y in viewfinder pixels (0,0 top-left); width/height the viewfinder size in pixels. */
     fun focusAt(x: Float, y: Float, width: Float, height: Float) {
+        startFocus(x, y, width, height)
+    }
+
+    /**
+     * Focuses at the point and, once that focus run has finished (not when a newer tap replaced it), locks AE/AF/AWB
+     * there. Used by the long press.
+     */
+    fun focusAndLockAt(x: Float, y: Float, width: Float, height: Float) {
         val cam = camera ?: return
-        if (width <= 0f || height <= 0f) return
+        val future = startFocus(x, y, width, height)
+        if (future == null) {
+            setAeLocked(true)
+            return
+        }
+        future.addListener(
+            {
+                val ok = try {
+                    future.get()
+                    true
+                } catch (_: Exception) {
+                    false
+                }
+                if (ok && camera === cam && !aeLocked) setAeLocked(true)
+            },
+            mainExecutor,
+        )
+    }
+
+    private fun startFocus(x: Float, y: Float, width: Float, height: Float): ListenableFuture<FocusMeteringResult>? {
+        val cam = camera ?: return null
+        if (width <= 0f || height <= 0f) return null
         try {
             val factory = preview?.let { SurfaceOrientedMeteringPointFactory(width, height, it) }
                 ?: SurfaceOrientedMeteringPointFactory(width, height)
@@ -216,10 +248,11 @@ class RetroCameraController(context: Context) {
             val action = FocusMeteringAction.Builder(point, flags)
                 .disableAutoCancel()
                 .build()
-            if (cam.cameraInfo.isFocusMeteringSupported(action)) cam.cameraControl.startFocusAndMetering(action)
+            if (cam.cameraInfo.isFocusMeteringSupported(action)) return cam.cameraControl.startFocusAndMetering(action)
         } catch (t: Exception) {
             Log.w(TAG, "focusAt failed", t)
         }
+        return null
     }
 
     /**
@@ -242,7 +275,9 @@ class RetroCameraController(context: Context) {
     }
 
     /**
-     * Locks (or unlocks) auto exposure and auto white balance so brightness stops drifting. Compensation is sent
+     * Locks (or unlocks) auto exposure, auto white balance and autofocus (AE/AF lock) so brightness and focus stop
+     * drifting. Focus is held by switching the AF mode to AUTO, which stops continuous AF from re-focusing after the
+     * tap-to-focus run (CameraX otherwise keeps CONTINUOUS_PICTURE on the tapped region); unlocking drops that override. Compensation is sent
      * first, then the lock, so the locked value is the one the user chose. Released on every rebind (camera, facing,
      * lens change, resume); the caller keeps its own switch in sync via [state].
      * Behaviour with EV changes while locked is device-dependent: many Camera2 HALs keep applying compensation to
@@ -437,13 +472,23 @@ class RetroCameraController(context: Context) {
     }
 
     @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
+    private fun supportsAfAuto(cam: Camera): Boolean = try {
+        val modes = Camera2CameraInfo.from(cam.cameraInfo).getCameraCharacteristic(CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES)
+        modes?.contains(CaptureRequest.CONTROL_AF_MODE_AUTO) == true
+    } catch (_: Exception) {
+        false
+    }
+
+    @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
     private fun applyAeLockOptions(cam: Camera, locked: Boolean) {
         try {
             val options = CaptureRequestOptions.Builder()
                 .setCaptureRequestOption(CaptureRequest.CONTROL_AE_LOCK, locked)
                 .setCaptureRequestOption(CaptureRequest.CONTROL_AWB_LOCK, locked)
-                .build()
-            Camera2CameraControl.from(cam.cameraControl).setCaptureRequestOptions(options)
+            if (locked && supportsAfAuto(cam)) {
+                options.setCaptureRequestOption(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO)
+            }
+            Camera2CameraControl.from(cam.cameraControl).setCaptureRequestOptions(options.build())
                 .swallowCancellation("AE lock")
         } catch (t: Exception) {
             Log.w(TAG, "AE lock failed", t)
