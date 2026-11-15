@@ -23,7 +23,7 @@ import org.robolectric.annotation.Config
 
 /**
  * Regression for "only flash appeared on the top bar": the weight modifier was lost inside TooltipBox, so the
- * first toggle took the whole row and pushed the other seven off-screen.
+ * first toggle took the whole row and pushed the others off-screen; all 9 must fit 360dp without scrolling.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], qualifiers = "w360dp-h740dp-xxhdpi")
@@ -39,21 +39,21 @@ class TopBarTest {
                 TopBar(
                     state = CameraScreenState(),
                     rotation = { 0f },
-                    actions = TopBarActions({}, {}, {}, {}, {}, {}, {}, {}),
+                    actions = TopBarActions({}, {}, {}, {}, {}, {}, {}, {}, {}),
                 )
             }
         }
         rule.waitForIdle()
         val nodes = rule.onAllNodes(isToggle)
         val count = nodes.fetchSemanticsNodes().size
-        assertEquals("flash, grain, flare, leaks, date, timer, strength, settings", 8, count)
+        assertEquals("flash, film flash, grain, flare, leaks, date, timer, strength, settings", 9, count)
         for (i in 0 until count) {
             val node = nodes[i]
             node.assertIsDisplayed()
             val b = node.getBoundsInRoot()
             val w = b.right.value - b.left.value
             assertTrue("toggle $i has no width: $b", w > 0f)
-            assertTrue("toggle $i narrower than 44dp: $b", w >= 44f - 0.5f)
+            assertTrue("toggle $i narrower than 40dp: $b", w >= 40f - 0.5f)
             assertTrue("toggle $i outside the screen: $b", b.left.value >= 0f && b.right.value <= 360.5f)
         }
     }

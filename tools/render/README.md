@@ -37,7 +37,7 @@ Seeds must stay below 2^24 (passed through a float text file). Everything under 
 `check_filmmath.py` renders flat colours through the shader (grain/CA/blur/halation off) and compares against `FilmMath.apply`:
 480 cases (5 profiles x flash on/off x 8 colours x 6 positions), max error 1.4/255.
 
-## Film flash (FlashMode.FILM) look-dev
+## Film flash (Settings.filmFlash) look-dev
 ```
 RENDER_RELIGHT_IMAGES=astronaut_dim,chelsea_dim,coffee_dim tools/render/dump.sh rl 512x512 1 gold_snap,instant_mini,classic_200,power_800
 RENDER_RELIGHT_IMAGES=astronaut_dim RENDER_RELIGHT_UPSCALE=3 tools/render/dump.sh rl3 512x512 1 gold_snap,instant_mini,classic_200,power_800

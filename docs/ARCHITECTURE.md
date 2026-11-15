@@ -101,7 +101,7 @@ Shader additions (mirrored in `FilmMath`, the CPU reference):
   no CA, edge blur, grain, vignette or flash drop. Frame borders and the date stamp are composed after the shader and ignore it.
 - App: per-profile strength is stored in DataStore as `Settings.strengthPercent: Map<profileId, Int>` (0..100, step 5, default
   100, key `strength_pct` = `id:pct;id:pct`), applied to both the preview effect and the capture params.
-- Film flash / relight (`FlashMode.FILM`, capture only; `Relight.kt`, `FlashAnalyzer.kt`, shader step 1a). A simulated on-camera
+- Film flash / relight (`Settings.filmFlash`, an independent toggle, not a flash mode; capture only; `Relight.kt`, `FlashAnalyzer.kt`, shader step 1a). A simulated on-camera
   flash that only touches the developed photo; the preview params never carry `FilmParams.relight` (uniform `uRelight.x = 0`
   skips the stage, preview cost zero; the `uIllum` sampler2D exists in the OES variant too and is bound to unit 2).
   Model, in linear light (gamma 2.2) BEFORE exposure / LUT / grain, replacing the plain background drop of step 1b:
@@ -124,6 +124,10 @@ Shader additions (mirrored in `FilmMath`, the CPU reference):
   Pipeline: `ParamsMapper.toFilmParams(..., filmFlash = true)` also applies the flash tint as if `flashActive`; `CapturePipeline`
   runs `FlashAnalyzer.analyze`, fills `RelightLook.subject/ambientLuma`, passes `IllumMap` to `OffscreenFilmRenderer.render`
   (no analysis -> no film flash). `FilmMath.apply` / `RelightMath.apply` are the flat-colour CPU reference (ambient = the colour).
+  Stacking: film flash works with any flash state. `CapturePipeline` passes `settings.filmFlash` (never the flash mode) and
+  `frame.flashFired` to `toFilmParams`; when a real/screen flash fired too, `relightLook(profile, stackedWithFlash = true)` scales the
+  relight strength by 0.55 (`STACKED_STRENGTH_FACTOR`) and sets its ambient drop to 0 (the real flash look's `backgroundDrop` already
+  darkens the background), and the flash tint is applied once. Legacy DataStore value `flash = "FILM"` (v0.7) loads as flash OFF + filmFlash.
   Harness: `RenderDumpTool.dumpRelight` + `sheets.py filmflash` (see tools/render/README.md).
 - v0.3 "less is more" retune (look verified with the software render harness, `tools/render/`):
   - Flash has NO synthetic hotspot any more (the phone's real flash already lit the frame). `hotspotSize`/`falloff` stay in the
@@ -208,7 +212,7 @@ Owns CameraX: binding, capture, flash, zoom/lens stops, focus, orientation, savi
 
 ```kotlin
 enum class Facing { BACK, FRONT }
-enum class FlashMode { OFF, AUTO, ON, FILM }   // FILM: simulated at render time, CameraX flash stays OFF
+enum class FlashMode { OFF, AUTO, ON }   // real flash only; the render-time film flash is Settings.filmFlash
 data class ZoomStop(val ratio: Float, val label: String)            // e.g. 0.6f "0.6×"
 data class CameraUiState(
     val facing: Facing, val hasFront: Boolean, val hasBack: Boolean, val hasFlashUnit: Boolean,

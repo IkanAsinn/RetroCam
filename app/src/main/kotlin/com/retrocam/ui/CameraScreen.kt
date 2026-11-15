@@ -218,6 +218,7 @@ fun CameraScreen(
                 rotation = rotation,
                 actions = TopBarActions(
                     onFlash = viewModel::cycleFlash,
+                    onFilmFlash = viewModel::toggleFilmFlash,
                     onGrain = viewModel::cycleGrain,
                     onFlare = viewModel::cycleFlare,
                     onLeaks = viewModel::cycleLeaks,

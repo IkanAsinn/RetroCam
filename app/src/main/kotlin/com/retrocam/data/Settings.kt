@@ -17,6 +17,7 @@ enum class TimerSetting(val seconds: Int) { OFF(0), THREE(3), TEN(10) }
 data class Settings(
     val cameraId: String? = null,
     val flash: FlashMode = FlashMode.OFF,
+    val filmFlash: Boolean = false,            // independent of the flash mode: adds the simulated flash at render time
     val grain: GrainLevel = GrainLevel.NORMAL,
     val flare: FlareMode = FlareMode.AUTO,
     val leaks: LeakMode = LeakMode.OFF,

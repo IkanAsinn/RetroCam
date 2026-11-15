@@ -296,6 +296,7 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
         }
         update { it.copy(flash = next) }
     }
+    fun toggleFilmFlash() = update { it.copy(filmFlash = !it.filmFlash) }
     fun cycleGrain() = update { it.copy(grain = it.grain.cycleNext()) }
     fun cycleFlare() = update { it.copy(flare = it.flare.cycleNext()) }
     fun cycleLeaks() = update { it.copy(leaks = it.leaks.cycleNext()) }

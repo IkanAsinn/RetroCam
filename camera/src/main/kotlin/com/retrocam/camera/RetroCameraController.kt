@@ -313,7 +313,7 @@ class RetroCameraController(context: Context) {
         val facingAtShutter = st?.facing ?: Facing.BACK
         val hasUnit = st?.hasFlashUnit ?: false
         val takenAt = System.currentTimeMillis()
-        val screenLit = modeAtShutter != FlashMode.OFF && modeAtShutter != FlashMode.FILM && facingAtShutter == Facing.FRONT
+        val screenLit = modeAtShutter != FlashMode.OFF && facingAtShutter == Facing.FRONT
         try {
         return suspendCancellableCoroutine { cont ->
             ic.takePicture(
@@ -607,7 +607,7 @@ class RetroCameraController(context: Context) {
     }
 
     private fun FlashMode.toCameraX(): Int = when {
-        this == FlashMode.OFF || this == FlashMode.FILM -> ImageCapture.FLASH_MODE_OFF // FILM is simulated at render time
+        this == FlashMode.OFF -> ImageCapture.FLASH_MODE_OFF
         facing == Facing.FRONT -> ImageCapture.FLASH_MODE_SCREEN // front has no unit: AUTO/ON both light the screen
         this == FlashMode.AUTO -> ImageCapture.FLASH_MODE_AUTO
         else -> ImageCapture.FLASH_MODE_ON
