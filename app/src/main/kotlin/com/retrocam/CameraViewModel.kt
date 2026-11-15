@@ -28,6 +28,8 @@ import com.retrocam.profiles.CameraProfile
 import com.retrocam.profiles.EffectToggles
 import com.retrocam.profiles.LensKind
 import com.retrocam.logic.ExposureLogic
+import com.retrocam.logic.FocusRingLogic
+import com.retrocam.logic.LockAction
 import com.retrocam.logic.FlashLogic
 import com.retrocam.profiles.ParamsMapper
 import kotlinx.coroutines.CancellationException
@@ -327,24 +329,39 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
 
     fun resetExposure() = setExposureIndex(0)
 
-    /** AE lock on/off. Refused (with a message) while the flash is ON or AUTO. */
+    /** AE/AF lock on/off. Refused (with a message) while the flash is ON or AUTO. */
     fun toggleAeLock() {
         val cam = controller.state.value ?: return
-        if (cam.aeLocked) {
-            safely { controller.setAeLocked(false) }
-            return
+        when (FocusRingLogic.lockButton(cam.aeLocked, lockAllowed(cam))) {
+            LockAction.UNLOCK -> safely { controller.setAeLocked(false) }
+            LockAction.REFUSED -> message(R.string.msg_ae_lock_flash)
+            LockAction.LOCK -> safely { controller.setAeLocked(true) }
         }
-        if (!ExposureLogic.aeLockAllowed(_settings.value.flash, FlashLogic.available(cam.facing, cam.hasFlashUnit))) {
-            message(R.string.msg_ae_lock_flash)
-            return
-        }
-        safely { controller.setAeLocked(true) }
     }
+
+    private fun lockAllowed(cam: CameraUiState) =
+        FocusRingLogic.lockAllowed(_settings.value.flash, cam.facing, cam.hasFlashUnit)
 
     // ---------------------------------------------------------------- viewfinder gestures
 
+    /** Tap on the viewfinder: releases a held AE/AF lock, then focuses (and meters) at the new point. */
     fun focusAt(x: Float, y: Float, width: Float, height: Float) {
+        val locked = controller.state.value?.aeLocked == true
+        if (FocusRingLogic.tapPlan(locked).unlockFirst) safely { controller.setAeLocked(false) }
         safely { controller.focusAt(x, y, width, height) }
+    }
+
+    /** Long press on the viewfinder: focus at the point and lock AE/AF there. */
+    fun focusAndLockAt(x: Float, y: Float, width: Float, height: Float) {
+        val cam = controller.state.value ?: return
+        val plan = FocusRingLogic.longPressPlan(cam.aeLocked, lockAllowed(cam))
+        if (plan.unlockFirst) safely { controller.setAeLocked(false) }
+        if (plan.lockAfterFocus) {
+            safely { controller.focusAndLockAt(x, y, width, height) }
+        } else {
+            safely { controller.focusAt(x, y, width, height) }
+            if (plan.refused) message(R.string.msg_ae_lock_flash)
+        }
     }
 
     fun onPinch(scale: Float) {

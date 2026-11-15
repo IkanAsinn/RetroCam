@@ -23,7 +23,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -40,7 +42,20 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import com.retrocam.camera.ExposureInfo
+import com.retrocam.logic.DragKind
+import com.retrocam.logic.FocusRingLogic
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.math.roundToInt
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -54,12 +69,19 @@ import kotlin.math.abs
 
 private const val BOX_ASPECT = 3f / 4f
 
+/** A viewfinder drag of this length (user vertical) sweeps the whole exposure range. */
+private const val EV_DRAG_RANGE_DP = 220f
+
 class ViewfinderActions(
     val onTapToFocus: (x: Float, y: Float, width: Float, height: Float) -> Unit,
     val onPinch: (scale: Float) -> Unit,
     val onPinchEnd: () -> Unit,
     val onSwipe: (delta: Int) -> Unit,
     val onCancelTimer: () -> Unit,
+    /** Exposure index chosen by a vertical drag on the viewfinder (same state as the EV chip's slider). */
+    val onExposureIndex: (index: Int) -> Unit = {},
+    /** Long press: focus and lock AE/AF at the point. */
+    val onLongPressFocus: (x: Float, y: Float, width: Float, height: Float) -> Unit = { _, _, _, _ -> },
 )
 
 /**
@@ -81,17 +103,71 @@ fun Viewfinder(
     modifier: Modifier = Modifier,
     aeLocked: Boolean = false,
     onAeLockTap: () -> Unit = {},
+    exposure: ExposureInfo = ExposureInfo.UNSUPPORTED,
+    exposureIndex: Int = 0,
+    lockEnabled: Boolean = true,
+    /** Changing this (camera type, facing) forgets the focus point. */
+    ringResetKey: Any? = null,
 ) {
     val description = stringResource(R.string.cd_viewfinder)
     var focusPoint by remember { mutableStateOf<Offset?>(null) }
+    var ringShown by remember { mutableStateOf(false) }
+    var focusToken by remember { mutableIntStateOf(0) } // a new focus point: restart the ring animation
+    var touchToken by remember { mutableIntStateOf(0) } // any ring interaction: restart the fade timer
+    var evDragging by remember { mutableStateOf(false) }
+    var labelVisible by remember { mutableStateOf(false) }
+    var boxSize by remember { mutableStateOf(IntSize.Zero) }
     val focusAnim = remember { Animatable(1f) }
     val currentActions by rememberUpdatedState(actions)
     val touchSlop = LocalViewConfiguration.current.touchSlop
+    val haptic = LocalHapticFeedback.current
 
-    LaunchedEffect(focusPoint) {
-        if (focusPoint != null) {
+    val ringVisible = focusPoint != null && (aeLocked || ringShown)
+    val ringVisibleState = rememberUpdatedState(ringVisible)
+    val exposureState = rememberUpdatedState(exposure)
+    val indexState = rememberUpdatedState(exposureIndex)
+    val ringAlpha by animateFloatAsState(
+        targetValue = if (!ringVisible) 0f else if (aeLocked) 0.6f else 1f,
+        animationSpec = tween(250),
+        label = "ringAlpha",
+    )
+    val quadrant by remember { derivedStateOf { FocusRingLogic.quadrant(rotation()) } }
+
+    LaunchedEffect(focusToken) {
+        if (focusToken > 0) {
             focusAnim.snapTo(0f)
             focusAnim.animateTo(1f, tween(800))
+        }
+    }
+    // Ring and slider fade FADE_MS after the last interaction, never while locked.
+    LaunchedEffect(touchToken, aeLocked, focusPoint) {
+        if (focusPoint != null && !aeLocked) {
+            delay(FocusRingLogic.FADE_MS)
+            ringShown = false
+        }
+    }
+    LaunchedEffect(evDragging) {
+        while (evDragging) {
+            touchToken++
+            delay(1_000)
+        }
+    }
+    var seenResetKey by remember { mutableStateOf(ringResetKey) }
+    LaunchedEffect(ringResetKey) {
+        if (seenResetKey != ringResetKey) {
+            seenResetKey = ringResetKey
+            focusPoint = null
+            ringShown = false
+        }
+    }
+    // The EV value shows next to the sun briefly after every change (ring slider, EV row or viewfinder drag).
+    var seenIndex by remember { mutableIntStateOf(exposureIndex) }
+    LaunchedEffect(exposureIndex) {
+        if (seenIndex != exposureIndex) {
+            seenIndex = exposureIndex
+            labelVisible = true
+            delay(FocusRingLogic.LABEL_MS)
+            labelVisible = false
         }
     }
 
@@ -100,17 +176,43 @@ fun Viewfinder(
             .aspectRatio(3f / 4f)
             .background(Color.Black)
             .semantics { contentDescription = description }
+            .onSizeChanged { boxSize = it }
             .pointerInput(touchSlop) {
-                // One gesture detector for tap, pinch and swipe so they never fight each other.
+                // One gesture detector for tap, long press, pinch, exposure drag and swipe so they never fight each other:
+                // two fingers = zoom; one finger that moves mostly along the user's vertical while the ring is visible =
+                // exposure; any other one-finger drag = camera swipe; no movement = tap (focus) or long press (focus + lock).
                 val swipeThreshold = 72.dp.toPx()
+                val dragRange = EV_DRAG_RANGE_DP.dp.toPx()
+                val longPressMs = viewConfiguration.longPressTimeoutMillis
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     var zooming = false
-                    var moved = false
-                    var consumedByChild = false
+                    var consumedByChild = down.isConsumed
+                    var kind = DragKind.UNDECIDED
+                    var longPressed = false
                     var totalDx = 0f
-                    do {
-                        val event = awaitPointerEvent(PointerEventPass.Main)
+                    var startIndex = 0
+                    var baseUp = 0f
+                    var lastUptime = down.uptimeMillis
+                    while (true) {
+                        val canLongPress = !zooming && !consumedByChild && !longPressed && kind == DragKind.UNDECIDED
+                        val event = if (canLongPress) {
+                            val remaining = (longPressMs - (lastUptime - down.uptimeMillis)).coerceAtLeast(1L)
+                            withTimeoutOrNull(remaining) { awaitPointerEvent(PointerEventPass.Main) }
+                        } else {
+                            awaitPointerEvent(PointerEventPass.Main)
+                        }
+                        if (event == null) {
+                            longPressed = true
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            focusPoint = down.position
+                            ringShown = true
+                            focusToken++
+                            touchToken++
+                            currentActions.onLongPressFocus(down.position.x, down.position.y, size.width.toFloat(), size.height.toFloat())
+                            continue
+                        }
+                        lastUptime = event.changes.firstOrNull()?.uptimeMillis ?: lastUptime
                         val pressed = event.changes.count { it.pressed }
                         if (pressed >= 2) {
                             zooming = true
@@ -119,17 +221,42 @@ fun Viewfinder(
                             event.changes.forEach { it.consume() }
                         } else if (!zooming) {
                             val change = event.changes.firstOrNull() ?: break
-                            if (change.isConsumed) consumedByChild = true // e.g. the AE LOCK pill took this tap
+                            if (change.isConsumed) consumedByChild = true // e.g. the lock button or pill took this tap
                             totalDx += change.positionChange().x
-                            val from = change.position - down.position
-                            if (abs(from.x) > touchSlop || abs(from.y) > touchSlop) moved = true
+                            if (!consumedByChild && !longPressed) {
+                                val from = change.position - down.position
+                                val q = FocusRingLogic.quadrant(rotation())
+                                if (kind == DragKind.UNDECIDED) {
+                                    kind = FocusRingLogic.classifyDrag(from.x, from.y, q, ringVisibleState.value, touchSlop)
+                                    if (kind == DragKind.EXPOSURE) {
+                                        startIndex = indexState.value
+                                        baseUp = FocusRingLogic.upDelta(from.x, from.y, q)
+                                        evDragging = true
+                                    }
+                                }
+                                if (kind == DragKind.EXPOSURE) {
+                                    val up = FocusRingLogic.upDelta(from.x, from.y, q) - baseUp
+                                    val index = FocusRingLogic.indexForDrag(startIndex, up, exposureState.value, dragRange)
+                                    if (index != indexState.value) {
+                                        currentActions.onExposureIndex(index)
+                                        touchToken++
+                                    }
+                                    change.consume()
+                                }
+                            }
                         }
-                    } while (event.changes.any { it.pressed })
+                        if (event.changes.none { it.pressed }) break
+                    }
+                    evDragging = false
                     when {
                         zooming -> currentActions.onPinchEnd()
-                        consumedByChild -> Unit
-                        !moved -> {
+                        consumedByChild || longPressed -> Unit
+                        kind == DragKind.EXPOSURE -> Unit
+                        kind == DragKind.UNDECIDED -> {
                             focusPoint = down.position
+                            ringShown = true
+                            focusToken++
+                            touchToken++
                             currentActions.onTapToFocus(down.position.x, down.position.y, size.width.toFloat(), size.height.toFloat())
                         }
                         abs(totalDx) > swipeThreshold -> currentActions.onSwipe(if (totalDx < 0) +1 else -1)
@@ -192,12 +319,59 @@ fun Viewfinder(
                 )
             }
             val p = focusPoint
-            val t = focusAnim.value
-            if (p != null && t < 1f) {
-                val radius = (52.dp.toPx() * (1f - 0.35f * t))
-                val alpha = if (t < 0.6f) 1f else 1f - (t - 0.6f) / 0.4f
-                drawCircle(RetroColors.Amber.copy(alpha = alpha), radius, p, style = Stroke(2.dp.toPx()))
+            if (p != null && ringAlpha > 0.01f) {
+                val radius = FOCUS_RING_RADIUS_DP.dp.toPx() * (1f + 0.3f * (1f - focusAnim.value))
+                drawCircle(RetroColors.Amber.copy(alpha = ringAlpha), radius, p, style = Stroke(2.dp.toPx()))
             }
+        }
+
+        // Exposure slider beside the ring and the AE/AF lock button attached to it.
+        val ringPoint = focusPoint
+        if (ringPoint != null && ringAlpha > 0.01f && boxSize.width > 0) {
+            val density = LocalDensity.current
+            val placement = remember(ringPoint, boxSize, quadrant, density) {
+                with(density) {
+                    FocusRingLogic.place(
+                        ringPoint.x, ringPoint.y, boxSize.width.toFloat(), boxSize.height.toFloat(), quadrant,
+                        FOCUS_RING_RADIUS_DP.dp.toPx(), 12.dp.toPx(), SLIDER_LENGTH_DP.dp.toPx(), SLIDER_THICKNESS_DP.dp.toPx(),
+                        LOCK_BUTTON_DP.dp.toPx(), 8.dp.toPx(),
+                    )
+                }
+            }
+            if (exposure.supported) {
+                FocusExposureSlider(
+                    info = exposure,
+                    index = exposureIndex,
+                    side = placement.side,
+                    labelVisible = labelVisible,
+                    onIndexChange = currentActions.onExposureIndex,
+                    onInteraction = { touchToken++ },
+                    rotation = rotation,
+                    alpha = { ringAlpha },
+                    modifier = Modifier.offset {
+                        IntOffset(
+                            (placement.sliderCx - SLIDER_THICKNESS_DP.dp.toPx() / 2f).roundToInt(),
+                            (placement.sliderCy - SLIDER_LENGTH_DP.dp.toPx() / 2f).roundToInt(),
+                        )
+                    },
+                )
+            }
+            FocusLockButton(
+                locked = aeLocked,
+                enabled = lockEnabled,
+                onClick = {
+                    onAeLockTap()
+                    touchToken++
+                },
+                rotation = rotation,
+                alpha = { ringAlpha },
+                modifier = Modifier.offset {
+                    IntOffset(
+                        (placement.lockCx - LOCK_BUTTON_DP.dp.toPx() / 2f).roundToInt(),
+                        (placement.lockCy - LOCK_BUTTON_DP.dp.toPx() / 2f).roundToInt(),
+                    )
+                },
+            )
         }
 
         // Camera-type name, fades in after a swipe or tap on the strip.

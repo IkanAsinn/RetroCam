@@ -80,8 +80,8 @@ class ExposureChipTest {
     @Test fun lockToggleCallsBack() {
         open = true
         setContent()
-        rule.onNode(hasContentDescription("Auto exposure lock is off. Tap to lock.")).performClick()
+        rule.onNode(hasContentDescription("AE/AF lock is off. Tap to lock.")).performClick()
         assertEquals(true, locked)
-        rule.onNode(hasContentDescription("Auto exposure lock is on. Tap to unlock.")).assertIsDisplayed()
+        rule.onNode(hasContentDescription("AE/AF lock is on. Tap to unlock.")).assertIsDisplayed()
     }
 }
