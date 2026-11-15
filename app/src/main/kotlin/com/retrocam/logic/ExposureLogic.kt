@@ -51,7 +51,8 @@ object ExposureLogic {
 
     /**
      * AE lock fights the pre-capture metering of the flash, so the lock is only offered with flash OFF
-     * (or on a camera without a flash unit, where the flash setting is moot).
+     * (or on a camera without a flash unit, where the flash setting is moot). The simulated FILM flash counts as OFF.
      */
-    fun aeLockAllowed(flash: FlashMode, hasFlashUnit: Boolean): Boolean = flash == FlashMode.OFF || !hasFlashUnit
+    fun aeLockAllowed(flash: FlashMode, hasFlashUnit: Boolean): Boolean =
+        flash == FlashMode.OFF || flash == FlashMode.FILM || !hasFlashUnit // FILM is not a real flash: nothing to meter
 }

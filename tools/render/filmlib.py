@@ -69,3 +69,27 @@ def render(dump_dir, profile, flash, img, tile=1024, overrides=None, shader_dir=
 
 def load_img(path):
     return np.asarray(Image.open(path).convert("RGB"))
+
+
+def render_film(dump_dir, profile, film, image, img, tile=1024, overrides=None):
+    """Film-flash render: uniforms from <profile>_rl<0|1>_<image>.json, ambient map from <image>_illum.ppm (dumpRelight)."""
+    h, w = img.shape[:2]
+    with open(os.path.join(dump_dir, "%s_rl%d_%s.json" % (profile, 1 if film else 0, image))) as f:
+        d = json.load(f)
+    assert (d["width"], d["height"]) == (w, h), (d["width"], d["height"], w, h)
+    u = dict(d["uniforms"])
+    if overrides:
+        u.update(overrides)
+    with tempfile.TemporaryDirectory() as td:
+        ppm_in, ppm_out, lut, uni = [os.path.join(td, n) for n in ("in.ppm", "out.ppm", "lut.raw", "u.txt")]
+        write_ppm(ppm_in, img)
+        with open(lut, "wb") as f:
+            f.write(lut_raw(os.path.join(dump_dir, "luts", profile + ".png")))
+        with open(uni, "w") as f:
+            f.write("uSeed %d\n" % d["seed"])
+            for k, v in u.items():
+                f.write(k + " " + " ".join(repr(float(x)) for x in v) + "\n")
+        subprocess.check_call([BIN, os.path.join(dump_dir, "film.vert"), os.path.join(dump_dir, "film_2d.frag"),
+                               ppm_in, lut, uni, ppm_out, str(tile), os.path.join(dump_dir, image + "_illum.ppm")],
+                              env=dict(os.environ, EGL_PLATFORM="surfaceless", LIBGL_ALWAYS_SOFTWARE="1"))
+        return read_ppm(ppm_out)

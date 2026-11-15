@@ -1,5 +1,6 @@
 package com.retrocam.filmengine
 
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
 
@@ -34,6 +35,20 @@ object FilmUniforms {
         } else {
             m["uFlash"] = floatArrayOf(0f, 0f, 0f)
             m["uFlashTint"] = floatArrayOf(1f, 1f, 1f)
+        }
+
+        // Film flash: uRelight = (effective strength, effective ambient drop, 0, 0), strength 0 = stage skipped (always in preview).
+        // uRelightSubj = (cx, cy in UV y-down, radius in frame heights, 0). The ambient map uIllum is bound by the renderer.
+        val rl = p.relight
+        val rs = if (rl != null) RelightMath.effectiveStrength(rl) else 0f
+        if (rl != null && rs > 0f) {
+            m["uRelight"] = floatArrayOf(rs, RelightMath.effectiveDrop(rl), 0f, 0f)
+            m["uRelightSubj"] = floatArrayOf(rl.subject.cx, rl.subject.cy, max(RelightMath.MIN_RADIUS, rl.subject.radius * rl.reach), 0f)
+            m["uRelightTint"] = FilmMath.relightTint(rl)
+        } else {
+            m["uRelight"] = floatArrayOf(0f, 0f, 0f, 0f)
+            m["uRelightSubj"] = floatArrayOf(0.5f, 0.5f, 1f, 0f)
+            m["uRelightTint"] = floatArrayOf(1f, 1f, 1f)
         }
 
         m["uHalStrength"] = floatArrayOf(p.halationStrength)

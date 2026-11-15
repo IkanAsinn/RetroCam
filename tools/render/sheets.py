@@ -5,6 +5,7 @@
   sheets.py flash   <dump_dir> <out.png> [profiles...]      flash-lit photos: original | per profile: flash off | flash on
   sheets.py compare <before_dump> <after_dump> <profile> <out.png> [--flash] [--photo NAME]
                                                             original | before | after, plus 1:1 crops of a 4000x3000 render
+  sheets.py filmflash <dump_dir> <dump_dir_x3> <out.png>     film flash (FILM mode): dim inputs, original | no flash | FILM per profile + face 1:1 crops
   sheets.py flashcmp <before_dump> <after_dump> <out.png>   old vs new flash result for several profiles on the flash photos
 """
 import os
@@ -115,6 +116,35 @@ def compare(before, after, prof, out, fl=False, name="coffee"):
     grid([top, bot, bot2]).save(out)
 
 
+FF_PROFILES = ["gold_snap", "instant_mini", "classic_200", "power_800"]
+FF_INPUTS = ["astronaut_dim", "chelsea_dim", "coffee_dim"]
+
+
+def filmflash(dump, dump3, out):
+    """dump: RENDER_RELIGHT_IMAGES=<FF_INPUTS> dump; dump3: astronaut_dim dump with RENDER_RELIGHT_UPSCALE=3 (face 1:1 crops)."""
+    rows = []
+    for band in (FF_PROFILES[:2], FF_PROFILES[2:]):
+        for im in FF_INPUTS:
+            a = photo(im)
+            row = [label(fit(a, 260), im)]
+            for p in band:
+                row.append(label(fit(L.render_film(dump, p, False, im, a), 260), p + " film look"))
+                row.append(label(fit(L.render_film(dump, p, True, im, a), 260), p + " + FILM flash"))
+            rows.append(row)
+    big = np.asarray(Image.fromarray(photo("astronaut_dim")).resize((1536, 1536), Image.BICUBIC))
+    cx, cy, cw, ch = 690, 330, 340, 340
+    def crop(arr):
+        return Image.fromarray(arr[cy - ch // 2:cy + ch // 2, cx - cw // 2:cx + cw // 2])
+    for band in (FF_PROFILES[:2], FF_PROFILES[2:]):
+        row = []
+        for p in band:
+            row.append(label(crop(big), "original 1:1"))
+            row.append(label(crop(L.render_film(dump3, p, False, "astronaut_dim", big)), p + " film look 1:1"))
+            row.append(label(crop(L.render_film(dump3, p, True, "astronaut_dim", big)), p + " + FILM flash 1:1"))
+        rows.append(row)
+    grid(rows).save(out)
+
+
 def flashcmp(before, after, out):
     rows = []
     for p in FLASH_PHOTOS:
@@ -141,6 +171,8 @@ if __name__ == "__main__":
         fl = "--flash" in args
         nm = args[args.index("--photo") + 1] if "--photo" in args else "coffee"
         compare(args[0], args[1], args[2], args[3], fl, nm)
+    elif cmd == "filmflash":
+        filmflash(sys.argv[2], sys.argv[3], sys.argv[4])
     elif cmd == "flashcmp":
         flashcmp(args[0], args[1], args[2])
     else:

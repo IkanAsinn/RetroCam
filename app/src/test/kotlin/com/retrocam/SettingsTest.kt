@@ -63,8 +63,16 @@ class SettingsTest {
     }
 
     @Test
+    fun filmFlashRoundTripsAndUnknownFlashFallsBackToOff() {
+        val s = Settings(flash = FlashMode.FILM)
+        assertEquals(s, mutablePreferencesOf().also { it.writeSettings(s) }.toSettings())
+        assertEquals("FILM", mutablePreferencesOf().also { it.writeSettings(s) }[stringPreferencesKey("flash")])
+        assertEquals(FlashMode.OFF, mutablePreferencesOf(stringPreferencesKey("flash") to "DISCO").toSettings().flash)
+    }
+
+    @Test
     fun cycleOrderOfEveryToggle() {
-        assertEquals(listOf(FlashMode.AUTO, FlashMode.ON, FlashMode.OFF), cycle(FlashMode.OFF))
+        assertEquals(listOf(FlashMode.AUTO, FlashMode.ON, FlashMode.FILM, FlashMode.OFF), cycle(FlashMode.OFF, 4))
         assertEquals(listOf(GrainLevel.LOW, GrainLevel.NORMAL, GrainLevel.HIGH, GrainLevel.OFF), cycle(GrainLevel.OFF, 4))
         assertEquals(listOf(FlareMode.AUTO, FlareMode.ALWAYS, FlareMode.OFF), cycle(FlareMode.OFF))
         assertEquals(listOf(LeakMode.SUBTLE, LeakMode.STRONG, LeakMode.OFF), cycle(LeakMode.OFF))

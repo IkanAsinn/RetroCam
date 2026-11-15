@@ -100,6 +100,10 @@ uniform float uEdgeSoft;
 uniform vec3 uFlash;          // hotspot size, falloff, strength
 uniform vec3 uFlashTint;
 uniform float uFlashBg;       // flash background drop (0 = off)
+uniform sampler2D uIllum;     // film flash: small blurred ambient-illumination map (gamma encoded RGB, row 0 = top); capture only
+uniform vec4 uRelight;        // film flash: effective strength (0 = stage skipped), ambient drop, 0, 0
+uniform vec4 uRelightSubj;    // film flash: subject centre (uv, y down), light radius in frame heights, 0
+uniform vec3 uRelightTint;    // film flash: flash light colour
 uniform float uHalStrength;
 uniform vec3 uHalTint;
 uniform vec4 uFlare;          // style (0 none, 1 warm, 2 rainbow), strength, centre x, centre y
@@ -131,6 +135,28 @@ float hash2(vec2 cell, uint seed) {
 }
 vec3 hueColor(float h) {
     return clamp(abs(fract(h + vec3(0.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0) - 1.0, 0.0, 1.0);
+}
+
+// ---- film flash relight (CPU reference: RelightMath.apply). s = sRGB-ish scene colour, uv/asp/r = position terms ----
+vec3 relight(vec3 s, vec2 uv, vec2 asp, float r) {
+    vec3 lin = pow(max(s, 0.0), vec3(GAMMA));
+    vec3 ill = pow(texture(uIllum, uv).rgb, vec3(GAMMA));
+    float il = dot(ill, LUMA);
+    vec3 illc = max(vec3(il) + (ill - il) * ${RelightMath.CHROMA_KEEP}, vec3(${RelightMath.ILLUM_FLOOR}));
+    vec3 alb = min(lin / illc, vec3(${RelightMath.ALBEDO_MAX}));
+    vec2 dv = (uv - uRelightSubj.xy) * asp;
+    float d = length(dv) / uRelightSubj.z;
+    float q = 1.0 / (1.0 + d * d);
+    float light = (q * q) * (1.0 - ${RelightMath.COVER_DROP} * smoothstep(0.55, 1.1, r));
+    vec3 o = lin * (1.0 - uRelight.y * (1.0 - light)) + alb * uRelightTint * (uRelight.x * light);
+    float m = max(o.r, max(o.g, o.b));
+    if (m > ${RelightMath.SHOULDER_KNEE}) {
+        float span = 1.0 - ${RelightMath.SHOULDER_KNEE};
+        float m2 = ${RelightMath.SHOULDER_KNEE} + span * (1.0 - exp(-(m - ${RelightMath.SHOULDER_KNEE}) / span));
+        o *= m2 / m;
+        o = mix(o, vec3(dot(o, LUMA)), ${RelightMath.ROLL_DESAT} * smoothstep(${RelightMath.SHOULDER_KNEE}, 1.5, m));
+    }
+    return pow(clamp(o, 0.0, 1.0), vec3(1.0 / GAMMA));
 }
 
 // ---- flare: analytic ghosts and streak, centre/highlight in UV (y down) ----
@@ -215,9 +241,16 @@ void main() {
         col = mix(col, sum / 7.0, min(1.0, bw * 1.5));
     }
 
+    // 1a. Film flash (capture only, uRelight.x = 0 in the preview): light the scene before the film sees it.
+    // It replaces the plain background drop of 1b (the ambient drop is part of the relight).
+    bool relit = uRelight.x > 0.0;
+    if (relit) {
+        col = relight(col, uv, asp, r);
+    }
+
     // 1b. Flash background falloff: the flash lights the near subject, the dark far background drops
     // toward black (before exposure/LUT so the film's own black lift and tint still apply).
-    if (uFlashBg > 0.0) {
+    if (uFlashBg > 0.0 && !relit) {
         float bl = dot(col, LUMA);
         float drop = uFlashBg * (1.0 - smoothstep(${FilmMath.BG_LUMA_LO}, ${FilmMath.BG_LUMA_HI}, bl)) * mix(${FilmMath.BG_RADIAL_MIN}, 1.0, clamp(r, 0.0, 1.0));
         col *= 1.0 - clamp(drop, 0.0, 1.0);

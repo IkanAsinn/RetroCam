@@ -97,6 +97,28 @@ class ParamsMapperTest {
         assertNull(map(p("plastic_120"), flash = true).flash)
     }
 
+    @Test fun filmFlashIsOffByDefaultAndAppliesFlashLookWhenOn() {
+        assertNull(map(p("gold_snap")).relight)
+        fun film(id: String) = ParamsMapper.toFilmParams(p(id), normal, LensKind.MAIN, false, 42, false, null, null, true)
+        val g = film("gold_snap")
+        assertNotNull(g.relight)
+        assertNotNull("film flash applies the flash tint / drop like a fired flash", g.flash)
+        assertNotNull(film("aqua").relight) // no flash spec: gentle default
+        assertNull(film("aqua").flash)
+        assertNull(ParamsMapper.toFilmParams(p("gold_snap"), normal, LensKind.MAIN, true, 42, false).relight) // a real flash is not a film flash
+    }
+
+    @Test fun filmFlashFlavourDisposablesPunchierThanGentleProfiles() {
+        val disposable = ParamsMapper.relightLook(p("gold_snap"))
+        val gentle = ParamsMapper.relightLook(p("studio_400"))
+        assertTrue(disposable.reach < gentle.reach)
+        assertTrue(disposable.ambientDrop > gentle.ambientDrop)
+        for (profile in profiles.values) {
+            val l = ParamsMapper.relightLook(profile)
+            assertTrue(profile.id, l.strength in 0.05f..1.2f && l.ambientDrop in 0f..1f && l.reach in 0.5f..1.5f)
+        }
+    }
+
     @Test fun gelsAreChosenDeterministicallyFromSeed() {
         val pop = p("pop_simple")
         val gels = pop.flash!!.gels.map { parseHexRgb(it) }.toSet()

@@ -39,12 +39,16 @@ class OffscreenFilmRenderer {
     private var lutTex = 0
     private var lutUploaded: Lut? = null
 
-    suspend fun render(input: Bitmap, params: FilmParams, lut: Lut): Bitmap {
+    /**
+     * [illum] is the film-flash ambient map (see [FlashAnalyzer]); only used when `params.relight != null`. When missing it is
+     * computed from [input] on the GL thread, and when that fails the film flash is skipped.
+     */
+    suspend fun render(input: Bitmap, params: FilmParams, lut: Lut, illum: IllumMap? = null): Bitmap {
         check(!released.get()) { "OffscreenFilmRenderer is released" }
         return try {
             withContext(dispatcher) {
                 check(!released.get()) { "OffscreenFilmRenderer is released" }
-                renderOnGlThread(input, params, lut)
+                renderOnGlThread(input, params, lut, illum)
             }
         } catch (e: RejectedExecutionException) {
             throw IllegalStateException("OffscreenFilmRenderer is released", e)
@@ -107,8 +111,14 @@ class OffscreenFilmRenderer {
         }
     }
 
-    private fun renderOnGlThread(input: Bitmap, params: FilmParams, lut: Lut): Bitmap {
+    private fun renderOnGlThread(input: Bitmap, params0: FilmParams, lut: Lut, illum0: IllumMap?): Bitmap {
         ensureGl()
+        var params = params0
+        var illum = illum0
+        if (params.relight != null && illum == null) {
+            illum = FlashAnalyzer.illumination(input)
+        }
+        if (illum == null) params = params.copy(relight = null) // no ambient map: skip the film flash rather than guess
         val egl = egl!!
         egl.makeCurrent(surface!!)
         val w = input.width
@@ -149,7 +159,30 @@ class OffscreenFilmRenderer {
             ownedSource?.recycle()
         }
 
+        var illumTex = 0
         try {
+            if (params.relight != null && illum != null) {
+                val ids = IntArray(1)
+                GLES30.glGenTextures(1, ids, 0)
+                illumTex = ids[0]
+                GLES30.glActiveTexture(GLES30.GL_TEXTURE2)
+                GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, illumTex)
+                GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR)
+                GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR)
+                GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE)
+                GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE)
+                GLES30.glPixelStorei(GLES30.GL_UNPACK_ALIGNMENT, 1)
+                val bytes = illum.toGammaBytes()
+                val buf = ByteBuffer.allocateDirect(bytes.size).order(ByteOrder.nativeOrder())
+                buf.put(bytes).rewind()
+                GLES30.glTexImage2D(
+                    GLES30.GL_TEXTURE_2D, 0, GLES30.GL_RGB8, illum.width, illum.height, 0,
+                    GLES30.GL_RGB, GLES30.GL_UNSIGNED_BYTE, buf,
+                )
+                GLES30.glPixelStorei(GLES30.GL_UNPACK_ALIGNMENT, 4)
+                GLES30.glActiveTexture(GLES30.GL_TEXTURE0)
+                GlUtil.checkError("illum upload")
+            }
             if (lutUploaded !== lut) {
                 GlUtil.deleteTexture(lutTex)
                 GLES30.glActiveTexture(GLES30.GL_TEXTURE1)
@@ -204,6 +237,7 @@ class OffscreenFilmRenderer {
             return out
         } finally {
             GlUtil.deleteTexture(sceneTex[0])
+            if (illumTex != 0) GlUtil.deleteTexture(illumTex)
         }
     }
 
