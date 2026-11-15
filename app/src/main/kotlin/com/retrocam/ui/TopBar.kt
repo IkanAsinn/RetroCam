@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.FlashAuto
 import androidx.compose.material.icons.outlined.FlashOff
@@ -80,14 +81,15 @@ fun TopBar(
 ) {
     val s = state.settings
     val facing = state.camera?.facing ?: Facing.BACK
-    val hasFlash = state.camera?.let { FlashLogic.available(it.facing, it.hasFlashUnit) } == true
-    val flashMode = FlashLogic.displayMode(s.flash, facing)
+    val hasFlash = FlashLogic.toggleEnabled() // FILM needs no flash hardware
+    val flashMode = FlashLogic.displayMode(s.flash, facing, state.camera?.hasFlashUnit ?: true)
     val off = stringResource(R.string.state_off)
 
     val flashState = when (flashMode) {
         FlashMode.OFF -> off
         FlashMode.AUTO -> stringResource(R.string.state_auto)
         FlashMode.ON -> stringResource(R.string.state_on)
+        FlashMode.FILM -> stringResource(R.string.state_film)
     }
     val grainState = when (s.grain) {
         GrainLevel.OFF -> off
@@ -122,12 +124,14 @@ fun TopBar(
                 FlashMode.OFF -> Icons.Outlined.FlashOff
                 FlashMode.AUTO -> Icons.Outlined.FlashAuto
                 FlashMode.ON -> Icons.Outlined.FlashOn
+                FlashMode.FILM -> Icons.Outlined.AutoAwesome
             },
-            description = if (hasFlash) stringResource(R.string.desc_flash, flashState) else stringResource(R.string.desc_flash_unavailable),
+            description = if (flashMode == FlashMode.FILM) stringResource(R.string.desc_flash_film) else stringResource(R.string.desc_flash, flashState),
             badge = when (flashMode) {
                 FlashMode.OFF -> null
                 FlashMode.AUTO -> stringResource(R.string.badge_auto)
                 FlashMode.ON -> stringResource(R.string.badge_on)
+                FlashMode.FILM -> stringResource(R.string.badge_film)
             },
             active = hasFlash && flashMode != FlashMode.OFF,
             enabled = hasFlash,

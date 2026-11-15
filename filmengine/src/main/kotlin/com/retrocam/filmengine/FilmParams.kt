@@ -15,6 +15,7 @@ data class FilmParams(
     val chromaticAberrationPx: Float = 0f, // 0..4 at corners, at REFERENCE_SHORT_EDGE
     val edgeSoftness: Float = 0f,          // 0..1
     val flash: FlashLook? = null,          // non-null only when the flash fired (capture) or flash is ON (preview)
+    val relight: RelightLook? = null,      // film flash (capture only; the preview never sets it); null = off
     val flare: FlareLook? = null,          // null = no flare
     val leak: LeakLook? = null,            // null = no light leak
     val colorShift: Rgb = Rgb(0f, 0f, 0f), // per-shot random cast, added after LUT (-0.1..0.1)

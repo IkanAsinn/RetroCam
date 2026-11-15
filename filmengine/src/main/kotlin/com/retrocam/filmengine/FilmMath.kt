@@ -7,7 +7,7 @@ import kotlin.math.sqrt
 
 /**
  * Pure-Kotlin CPU reference of the COLOUR part of the shader (exposure, contrast, black lift,
- * LUT, saturation, colour shift, flash background drop and tint, vignette, filter strength). No grain, blur, CA, halation, flare or leak.
+ * LUT, saturation, colour shift, flash background drop and tint, film-flash relight (flat colours), vignette, filter strength). No grain, blur, CA, halation, flare or leak.
  * Used by unit tests and by the golden-image instrumented test. Keep in lock-step with
  * [FilmShader].
  */
@@ -97,8 +97,15 @@ object FilmMath {
     /** Colour pipeline for one pixel at output position ([u], [v]) of an image with [aspect] = w/h. */
     fun apply(r: Float, g: Float, b: Float, params: FilmParams, lut: Lut, u: Float, v: Float, aspect: Float): Rgb {
         val rad = radius(u, v, aspect)
-        val keep = backgroundKeep(params.flash, luma(r, g, b), rad)
-        val c0 = grade(r * keep, g * keep, b * keep, params, lut)
+        // Film flash (flat-colour reference: the ambient illumination of a flat patch is the patch itself). It replaces the
+        // plain background drop, exactly like the shader.
+        val look = params.relight
+        val relit = if (look != null) {
+            val illum = floatArrayOf(max(r, 0f).pow(GAMMA), max(g, 0f).pow(GAMMA), max(b, 0f).pow(GAMMA))
+            RelightMath.apply(r, g, b, illum, look, u, v, aspect)
+        } else null
+        val keep = if (relit != null && RelightMath.effectiveStrength(look!!) > 0f) 1f else backgroundKeep(params.flash, luma(r, g, b), rad)
+        val c0 = if (relit != null) grade(relit.r, relit.g, relit.b, params, lut) else grade(r * keep, g * keep, b * keep, params, lut)
         val c = if (params.flash != null && params.flash.strength > 0f) {
             val t = flashTint(params.flash)
             Rgb(
@@ -124,10 +131,14 @@ object FilmMath {
     }
 
     /** Flash light colour relative to 6500 K (white), times the optional gel. */
-    internal fun flashTint(flash: FlashLook): FloatArray {
-        val base = kelvinToRgb(flash.kelvin)
+    internal fun flashTint(flash: FlashLook): FloatArray = tintOf(flash.kelvin, flash.gel)
+
+    /** Colour of the film-flash light (same convention as [flashTint]). */
+    internal fun relightTint(look: RelightLook): FloatArray = tintOf(look.kelvin, look.gel)
+
+    private fun tintOf(kelvin: Float, gel: Rgb?): FloatArray {
+        val base = kelvinToRgb(kelvin)
         val ref = kelvinToRgb(6500f)
-        val gel = flash.gel
         return floatArrayOf(
             min(2f, base[0] / ref[0] * (gel?.r ?: 1f)),
             min(2f, base[1] / ref[1] * (gel?.g ?: 1f)),

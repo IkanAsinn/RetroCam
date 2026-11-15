@@ -10,8 +10,11 @@ import com.retrocam.filmengine.BitmapMirror
 import com.retrocam.filmengine.DateStampRenderer
 import com.retrocam.filmengine.FrameComposer
 import com.retrocam.filmengine.FrameFormat
+import com.retrocam.filmengine.FlashAnalyzer
 import com.retrocam.filmengine.Highlight
+import com.retrocam.filmengine.IllumMap
 import com.retrocam.filmengine.OffscreenFilmRenderer
+import com.retrocam.logic.FlashLogic
 import com.retrocam.logic.FrameSelection
 import com.retrocam.logic.LensMapping
 import com.retrocam.logic.MirrorLogic
@@ -54,7 +57,7 @@ class CapturePipeline(
         toRecycle += frame.bitmap
         try {
             val lut = profiles.lut(shot.profile.id)
-            val params = ParamsMapper.toFilmParams(
+            var params = ParamsMapper.toFilmParams(
                 profile = shot.profile,
                 toggles = shot.settings.toggles,
                 lens = LensMapping.toLensKind(frame.lens),
@@ -63,8 +66,21 @@ class CapturePipeline(
                 brightHighlight = shot.highlight != null,
                 highlightX = shot.highlight?.x,
                 highlightY = shot.highlight?.y,
+                filmFlash = FlashLogic.isFilm(shot.settings.flash),
             ).copy(strength = StrengthMath.toStrength(shot.settings.strengthFor(shot.profile.id))) // same strength as the preview
-            val rendered = renderer.use { it.render(frame.bitmap, params, lut) }
+            // Film flash: look for faces and the ambient light on a small copy; any failure just skips the simulated flash.
+            var illum: IllumMap? = null
+            val look = params.relight
+            if (look != null) {
+                val analysis = FlashAnalyzer.analyze(frame.bitmap)
+                if (analysis != null) {
+                    illum = analysis.illum
+                    params = params.copy(relight = look.copy(subject = analysis.subject, ambientLuma = analysis.ambientLuma))
+                } else {
+                    params = params.copy(relight = null)
+                }
+            }
+            val rendered = renderer.use { it.render(frame.bitmap, params, lut, illum) }
             toRecycle += rendered
             if (rendered !== frame.bitmap) frame.bitmap.recycle() // free the 48 MB input early
 

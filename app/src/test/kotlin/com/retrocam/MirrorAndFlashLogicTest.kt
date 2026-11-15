@@ -33,7 +33,7 @@ class MirrorAndFlashLogicTest {
     fun backFlashIsUnchanged() {
         for (m in FlashMode.entries) {
             assertEquals(m, FlashLogic.effective(m, Facing.BACK, true))
-            assertEquals(FlashMode.OFF, FlashLogic.effective(m, Facing.BACK, false))
+            assertEquals(if (m == FlashMode.FILM) FlashMode.FILM else FlashMode.OFF, FlashLogic.effective(m, Facing.BACK, false))
         }
         assertTrue(FlashLogic.available(Facing.BACK, true))
         assertFalse(FlashLogic.available(Facing.BACK, false))
@@ -41,14 +41,50 @@ class MirrorAndFlashLogicTest {
     }
 
     @Test
-    fun cycleOnFrontIsOffOnOnly() {
+    fun cycleOnFrontIsOffOnFilm() {
         assertEquals(FlashMode.ON, FlashLogic.next(FlashMode.OFF, Facing.FRONT))
-        assertEquals(FlashMode.OFF, FlashLogic.next(FlashMode.ON, Facing.FRONT))
-        assertEquals(FlashMode.OFF, FlashLogic.next(FlashMode.AUTO, Facing.FRONT)) // stored AUTO reads as ON
+        assertEquals(FlashMode.FILM, FlashLogic.next(FlashMode.ON, Facing.FRONT))
+        assertEquals(FlashMode.OFF, FlashLogic.next(FlashMode.FILM, Facing.FRONT))
+        assertEquals(FlashMode.FILM, FlashLogic.next(FlashMode.AUTO, Facing.FRONT)) // stored AUTO reads as ON
         assertEquals(FlashMode.ON, FlashLogic.displayMode(FlashMode.AUTO, Facing.FRONT))
         assertEquals(FlashMode.AUTO, FlashLogic.next(FlashMode.OFF, Facing.BACK))
         assertEquals(FlashMode.ON, FlashLogic.next(FlashMode.AUTO, Facing.BACK))
-        assertEquals(FlashMode.OFF, FlashLogic.next(FlashMode.ON, Facing.BACK))
+    }
+
+    @Test
+    fun filmFlashCyclesPerFacingAndFlashUnit() {
+        fun cycle(start: FlashMode, facing: Facing, unit: Boolean, n: Int): List<FlashMode> {
+            val out = ArrayList<FlashMode>()
+            var m = start
+            repeat(n) { m = FlashLogic.next(m, facing, unit); out += m }
+            return out
+        }
+        val o = FlashMode.OFF
+        assertEquals(listOf(FlashMode.AUTO, FlashMode.ON, FlashMode.FILM, o), cycle(o, Facing.BACK, true, 4))
+        assertEquals(listOf(FlashMode.FILM, o, FlashMode.FILM), cycle(o, Facing.BACK, false, 3))
+        assertEquals(listOf(FlashMode.ON, FlashMode.FILM, o), cycle(o, Facing.FRONT, false, 3))
+        // a stored AUTO/ON without a unit reads as OFF, so the next tap goes to FILM
+        assertEquals(FlashMode.FILM, FlashLogic.next(FlashMode.ON, Facing.BACK, false))
+        assertEquals(o, FlashLogic.displayMode(FlashMode.AUTO, Facing.BACK, false))
+        assertEquals(FlashMode.FILM, FlashLogic.displayMode(FlashMode.FILM, Facing.BACK, false))
+        assertTrue(FlashLogic.toggleEnabled())
+    }
+
+    @Test
+    fun filmFlashIsNeverARealOrScreenFlash() {
+        for (facing in Facing.entries) for (unit in listOf(true, false)) {
+            assertEquals(FlashMode.FILM, FlashLogic.effective(FlashMode.FILM, facing, unit))
+            assertFalse(FlashLogic.usesScreenFlash(FlashMode.FILM, facing))
+        }
+        assertTrue(FlashLogic.isFilm(FlashMode.FILM))
+        assertFalse(FlashLogic.isFilm(FlashMode.ON))
+    }
+
+    @Test
+    fun aeLockIsAllowedWithFilmFlash() {
+        for (facing in Facing.entries) for (unit in listOf(true, false)) {
+            assertTrue(ExposureLogic.aeLockAllowed(FlashMode.FILM, FlashLogic.available(facing, unit)))
+        }
     }
 
     @Test

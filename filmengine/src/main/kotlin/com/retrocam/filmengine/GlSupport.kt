@@ -200,11 +200,12 @@ internal class FilmProgram(external: Boolean) {
 
     private fun loc(name: String): Int = locations.getOrPut(name) { GLES30.glGetUniformLocation(id, name) }
 
-    /** Binds the program and fixes the sampler units: scene = 0, LUT = 1. */
+    /** Binds the program and fixes the sampler units: scene = 0, LUT = 1, film-flash illumination map = 2. */
     fun use() {
         GLES30.glUseProgram(id)
         GLES30.glUniform1i(loc("uScene"), 0)
         GLES30.glUniform1i(loc("uLut"), 1)
+        GLES30.glUniform1i(loc("uIllum"), 2)
     }
 
     /**

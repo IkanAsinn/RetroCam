@@ -1,0 +1,5 @@
+{
+  "_comment": "Hand-specified faces for the film-flash harness (instead of android.media.FaceDetector): cx, cy = face centre, size = face height, all as a fraction of the frame (y down).",
+  "astronaut": [{"cx": 0.45, "cy": 0.205, "size": 0.25}],
+  "astronaut_dim": [{"cx": 0.45, "cy": 0.205, "size": 0.25}]
+}

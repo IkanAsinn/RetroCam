@@ -285,8 +285,8 @@ class CameraViewModel(private val container: AppContainer) : ViewModel() {
 
     fun cycleFlash() {
         val cam = controller.state.value
-        if (cam == null || !FlashLogic.available(cam.facing, cam.hasFlashUnit)) return
-        val next = FlashLogic.next(_settings.value.flash, cam.facing)
+        if (cam == null) return
+        val next = FlashLogic.next(_settings.value.flash, cam.facing, cam.hasFlashUnit)
         // A locked AE fights the flash's pre-capture metering (also the screen flash): turning the flash on releases the lock.
         if (cam.aeLocked && !ExposureLogic.aeLockAllowed(next, true)) {
             safely { controller.setAeLocked(false) }

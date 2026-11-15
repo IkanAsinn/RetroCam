@@ -5,6 +5,7 @@ import com.retrocam.filmengine.FlareLook
 import com.retrocam.filmengine.FlareStyle
 import com.retrocam.filmengine.FlashLook
 import com.retrocam.filmengine.LeakLook
+import com.retrocam.filmengine.RelightLook
 import com.retrocam.filmengine.Rgb
 import java.util.Random
 import kotlin.math.PI
@@ -51,6 +52,7 @@ object ParamsMapper {
         brightHighlight: Boolean,
         highlightX: Float? = null,
         highlightY: Float? = null,
+        filmFlash: Boolean = false,
     ): FilmParams {
         val scale = profile.lens[lens] ?: LensScale()
         return FilmParams(
@@ -66,7 +68,9 @@ object ParamsMapper {
             halationTint = parseHexRgb(profile.halation.tint),
             chromaticAberrationPx = (profile.chromaticAberration * scale.chromaticAberration).coerceIn(0f, 4f),
             edgeSoftness = (profile.edgeSoftness * scale.edgeSoftness).coerceIn(0f, 1f),
-            flash = flashLook(profile, flashActive, seed),
+            // Film flash (capture only) also gets the flash colour tint, as if the flash had fired.
+            flash = flashLook(profile, flashActive || filmFlash, seed),
+            relight = if (filmFlash) relightLook(profile) else null,
             flare = flareLook(profile, toggles.flare, brightHighlight, seed, highlightX, highlightY),
             leak = leakLook(profile, toggles.leaks, seed),
             colorShift = colorShift(profile, seed),
@@ -93,6 +97,30 @@ object ParamsMapper {
             strength = spec.strength.coerceIn(0f, 1f),
             gel = gel,
             backgroundDrop = spec.backgroundDrop.coerceIn(0f, 1f),
+        )
+    }
+
+    // Film flash flavour: disposables / instant cameras (strong falloff, strong background drop) look punchy, others gentle.
+    private const val RELIGHT_BASE = 0.22f
+    private const val RELIGHT_GAIN = 0.4f      // strength = BASE + GAIN * spec.strength
+    private const val RELIGHT_EXPOSURE_COMP = 2.5f // strength *= 2^(-COMP * exposureEv) for brightened profiles
+    private const val RELIGHT_REACH_GENTLE = 1.3f
+    private const val RELIGHT_REACH_PUNCHY = 0.9f
+    private const val RELIGHT_DROP_GAIN = 1.0f  // ambient drop = spec.backgroundDrop * GAIN
+
+    /** Film-flash look from the profile's flash spec; profiles without one (Aqua, Plastic 120) get a gentle default. */
+    fun relightLook(profile: CameraProfile): RelightLook {
+        // Profiles that already brighten the exposure (Instax +0.2 EV and a bright LUT) get less flash so faces do not clip.
+        val headroom = Math.pow(2.0, -RELIGHT_EXPOSURE_COMP * profile.exposureEv.coerceIn(-1f, 1f).toDouble()).toFloat().coerceAtMost(1f)
+        val spec = profile.flash
+        if (spec == null) return RelightLook(kelvin = 5800f, strength = 0.7f * headroom, ambientDrop = 0.25f, reach = RELIGHT_REACH_GENTLE)
+        val punch = ((spec.falloff.coerceIn(0f, 1f) - 0.3f) / 0.65f).coerceIn(0f, 1f)
+        return RelightLook(
+            kelvin = spec.kelvin,
+            gel = null, // gels are a creative colour for the real-flash look; the film flash stays a natural white
+            strength = (RELIGHT_BASE + RELIGHT_GAIN * spec.strength.coerceIn(0f, 1f)) * headroom,
+            ambientDrop = (spec.backgroundDrop.coerceIn(0f, 1f) * RELIGHT_DROP_GAIN).coerceIn(0f, 1f),
+            reach = RELIGHT_REACH_GENTLE + (RELIGHT_REACH_PUNCHY - RELIGHT_REACH_GENTLE) * punch,
         )
     }
 

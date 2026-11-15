@@ -2,7 +2,8 @@
 // Mirrors OffscreenFilmRenderer: scene in a 2D texture (row 0 = image top), 33^3 RGB8 3D LUT, topDown=1,
 // identity texture matrix, output rendered in TILE x TILE pieces with uQuadRect selecting the piece.
 //
-// usage: film_render vert frag input.ppm lut.raw uniforms.txt out.ppm [tile]
+// usage: film_render vert frag input.ppm lut.raw uniforms.txt out.ppm [tile [illum.ppm]]
+//   illum.ppm    : film-flash ambient map (RGB8, gamma encoded), bound to texture unit 2 as uIllum (default: 1x1 mid grey)
 //   lut.raw      : 33*33*33*3 bytes, index ((b*33+g)*33+r)*3
 //   uniforms.txt : lines "name v1 [v2 v3 v4]"; the name uSeed is an int uniform.
 #include <EGL/egl.h>
@@ -89,6 +90,20 @@ int main(int argc, char **argv) {
     glTexImage3D(GL_TEXTURE_3D, 0, GL_RGB8, 33, 33, 33, 0, GL_RGB, GL_UNSIGNED_BYTE, lut);
     glActiveTexture(GL_TEXTURE0);
 
+    {
+        unsigned char grey[3] = {128, 128, 128};
+        int iw = 1, ih = 1; unsigned char *ip = grey;
+        if (argc > 8) ip = read_ppm(argv[8], &iw, &ih);
+        GLuint it; glGenTextures(1, &it);
+        glActiveTexture(GL_TEXTURE2); glBindTexture(GL_TEXTURE_2D, it);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, iw, ih, 0, GL_RGB, GL_UNSIGNED_BYTE, ip);
+        glActiveTexture(GL_TEXTURE0);
+    }
+    glUniform1i(glGetUniformLocation(prog, "uIllum"), 2);
     glUniform1i(glGetUniformLocation(prog, "uScene"), 0);
     glUniform1i(glGetUniformLocation(prog, "uLut"), 1);
     float ident[16] = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};

@@ -37,6 +37,17 @@ Seeds must stay below 2^24 (passed through a float text file). Everything under 
 `check_filmmath.py` renders flat colours through the shader (grain/CA/blur/halation off) and compares against `FilmMath.apply`:
 480 cases (5 profiles x flash on/off x 8 colours x 6 positions), max error 1.4/255.
 
+## Film flash (FlashMode.FILM) look-dev
+```
+RENDER_RELIGHT_IMAGES=astronaut_dim,chelsea_dim,coffee_dim tools/render/dump.sh rl 512x512 1 gold_snap,instant_mini,classic_200,power_800
+RENDER_RELIGHT_IMAGES=astronaut_dim RENDER_RELIGHT_UPSCALE=3 tools/render/dump.sh rl3 512x512 1 gold_snap,instant_mini,classic_200,power_800
+python3 tools/render/sheets.py filmflash tools/render/out/rl tools/render/out/rl3 tools/render/out/film_flash_compare.png
+```
+`dumpRelight` runs the real `IllumMapper` / `FlashSubject` / `ParamsMapper` / `FilmUniforms` code on `samples/<image>.jpg`; faces come
+from `samples/faces.json` (hand-specified, standing in for `android.media.FaceDetector`). `film_render` takes the ambient map as an
+optional 8th argument (`uIllum`, unit 2). `*_dim.jpg` are DARK, warm, unevenly lit versions of astronaut/chelsea/coffee
+(`make_samples.py`, 8-bit so deep shadows are posterised in the originals).
+
 ## Sample photos (all freely licensed, bundled with scikit-image 0.26; no network needed)
 `astronaut` (NASA, public domain), `coffee` (Rachel Michetti, CC0), `chelsea` the cat (Stefan van der Walt, CC0), `rocket`
 (SpaceX, CC0). The data are small (<= 640 px) and JPEG-compressed, so sky gradients show banding in the *originals*;

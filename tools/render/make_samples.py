@@ -26,9 +26,21 @@ def flash_variant(a, centre=(0.5, 0.45), sigma=0.34, ambient=0.18, gain=1.05):
     return (np.clip(lin, 0, 1) ** (1 / 2.2) * 255 + 0.5).astype(np.uint8)
 
 
+def dim_variant(a, gain=0.11, lamp=(0.15, 0.2)):
+    """Dim, warm indoor ambient (tungsten-ish cast, one lamp off to a side so the light is uneven): the film-flash test input."""
+    h, w = a.shape[:2]
+    yy, xx = np.mgrid[0:h, 0:w]
+    r2 = ((xx / w - lamp[0]) * (w / h)) ** 2 + (yy / h - lamp[1]) ** 2
+    light = 0.45 + 0.9 / (1.0 + r2 / 0.35)
+    lin = (a / 255.0) ** 2.2 * light[..., None] * gain * np.array([1.0, 0.66, 0.36])
+    return (np.clip(lin, 0, 1) ** (1 / 2.2) * 255 + 0.5).astype(np.uint8)
+
+
 if __name__ == "__main__":
     for n in ["astronaut", "coffee", "chelsea", "rocket"]:
         a = getattr(d, n)()
         Image.fromarray(a).save(os.path.join(OUT, n + ".jpg"), quality=95)
     Image.fromarray(flash_variant(d.astronaut())).save(os.path.join(OUT, "astronaut_flash.jpg"), quality=95)
     Image.fromarray(flash_variant(d.chelsea(), centre=(0.45, 0.5), sigma=0.3)).save(os.path.join(OUT, "chelsea_flash.jpg"), quality=95)
+    for n in ["astronaut", "chelsea", "coffee"]:
+        Image.fromarray(dim_variant(getattr(d, n)())).save(os.path.join(OUT, n + "_dim.jpg"), quality=95)

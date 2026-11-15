@@ -101,6 +101,30 @@ Shader additions (mirrored in `FilmMath`, the CPU reference):
   no CA, edge blur, grain, vignette or flash drop. Frame borders and the date stamp are composed after the shader and ignore it.
 - App: per-profile strength is stored in DataStore as `Settings.strengthPercent: Map<profileId, Int>` (0..100, step 5, default
   100, key `strength_pct` = `id:pct;id:pct`), applied to both the preview effect and the capture params.
+- Film flash / relight (`FlashMode.FILM`, capture only; `Relight.kt`, `FlashAnalyzer.kt`, shader step 1a). A simulated on-camera
+  flash that only touches the developed photo; the preview params never carry `FilmParams.relight` (uniform `uRelight.x = 0`
+  skips the stage, preview cost zero; the `uIllum` sampler2D exists in the OES variant too and is bound to unit 2).
+  Model, in linear light (gamma 2.2) BEFORE exposure / LUT / grain, replacing the plain background drop of step 1b:
+  1. `FlashAnalyzer` (Android) downsamples the frame once (halving steps to 320 px); `IllumMapper` (pure) box-downsamples to
+     a 96 px long-side map in linear light and blurs it edge-aware (bilateral on ln-luma, sigma 12 % of the long side) = ambient
+     illumination estimate `ill`, uploaded as an RGB8 texture (`uIllum`, unit 2, gamma encoded, linear filter).
+  2. Reflectance `alb = min(lin / max(ill, 0.02), 2.5)` (Retinex), per channel so the ambient colour cast is divided out.
+  3. Light `L = (1/(1+d^2))^2 * coverage(r)`, `d` = distance from `FlashSubject` / (radius * profile reach); `coverage` is the
+     small flash's corner fall-off (1 - 0.3 * smoothstep(0.55, 1.1, r)). Subject: `android.media.FaceDetector` on a downscaled
+     RGB_565 copy (try/catch, no faces on any failure) -> `FlashSubject.fromFaces` (centre pulled 65 % toward the faces,
+     radius 2.8 * face height clamped to 0.8..1.25 frame heights); no face -> `FlashSubject.DEFAULT` (0.5, 0.44, r 0.95).
+  4. `out = lin * (1 - drop * (1 - L)) + strength * L * alb * flashColour`, then a hue-preserving soft shoulder (knee 0.5) with
+     slight desaturation of rolled-off highlights, then back to gamma. Flat (shadow-filling) because the flash term follows
+     reflectance; background drops because only the ambient term remains there; flash-lit areas move toward the flash colour
+     (neutral-ish) while the unlit background keeps its warm ambient.
+  5. Scene adaptation: `strength` and `drop` are scaled by `smoothstep(0.02, 0.30, meanLinearLuma)` down to 0.3 / 0.35 for bright scenes.
+  6. Per-profile flavour (`ParamsMapper.relightLook`, from the flash spec): `strength = (0.22 + 0.4 * spec.strength) * 2^(-2.5 * exposureEv)`
+     (capped at 1 for brightened profiles), `ambientDrop = spec.backgroundDrop`, `reach = 1.3 .. 0.9` by `spec.falloff`
+     (disposables / Instax punchy), kelvin from the spec, no gel. Profiles without a flash spec get a gentle default.
+  Pipeline: `ParamsMapper.toFilmParams(..., filmFlash = true)` also applies the flash tint as if `flashActive`; `CapturePipeline`
+  runs `FlashAnalyzer.analyze`, fills `RelightLook.subject/ambientLuma`, passes `IllumMap` to `OffscreenFilmRenderer.render`
+  (no analysis -> no film flash). `FilmMath.apply` / `RelightMath.apply` are the flat-colour CPU reference (ambient = the colour).
+  Harness: `RenderDumpTool.dumpRelight` + `sheets.py filmflash` (see tools/render/README.md).
 - v0.3 "less is more" retune (look verified with the software render harness, `tools/render/`):
   - Flash has NO synthetic hotspot any more (the phone's real flash already lit the frame). `hotspotSize`/`falloff` stay in the
     API/JSON but are unused by the shader; what remains is the background falloff (above) and a uniform, subtle colour-temperature
@@ -184,7 +208,7 @@ Owns CameraX: binding, capture, flash, zoom/lens stops, focus, orientation, savi
 
 ```kotlin
 enum class Facing { BACK, FRONT }
-enum class FlashMode { OFF, AUTO, ON }
+enum class FlashMode { OFF, AUTO, ON, FILM }   // FILM: simulated at render time, CameraX flash stays OFF
 data class ZoomStop(val ratio: Float, val label: String)            // e.g. 0.6f "0.6×"
 data class CameraUiState(
     val facing: Facing, val hasFront: Boolean, val hasBack: Boolean, val hasFlashUnit: Boolean,
